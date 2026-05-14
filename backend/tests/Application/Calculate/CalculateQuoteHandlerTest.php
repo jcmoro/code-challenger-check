@@ -137,6 +137,50 @@ final class CalculateQuoteHandlerTest extends TestCase
         self::assertSame(34, $fetcher->lastAge->value);
     }
 
+    /**
+     * The previous discount test used 295×0.95 = 280.25, an exact decimal.
+     * This locks the rounding contract for values whose multiplication
+     * doesn't terminate cleanly.
+     */
+    public function testItRoundsTheDiscountedPriceToTwoDecimals(): void
+    {
+        $handler = $this->handler(
+            campaign: FixedCampaignProvider::active(5.0),
+            quotes: [
+                new Quote('provider-a', Money::eur(299.99)), // ×0.95 = 284.9905 → 284.99
+                new Quote('provider-b', Money::eur(333.33)), // ×0.95 = 316.6635 → 316.66
+            ],
+            failed: [],
+        );
+
+        $result = $handler->handle($this->command());
+
+        self::assertNotNull($result->quotes[0]->discountedPrice);
+        self::assertNotNull($result->quotes[1]->discountedPrice);
+        self::assertTrue(
+            Money::eur(284.99)->equals($result->quotes[0]->discountedPrice),
+            'A: 299.99 × 0.95 = 284.9905 should round to 284.99',
+        );
+        self::assertTrue(
+            Money::eur(316.66)->equals($result->quotes[1]->discountedPrice),
+            'B: 333.33 × 0.95 = 316.6635 should round to 316.66',
+        );
+    }
+
+    public function testASingleSurvivingQuoteIsMarkedAsCheapest(): void
+    {
+        $handler = $this->handler(
+            campaign: FixedCampaignProvider::inactive(),
+            quotes: [new Quote('provider-b', Money::eur(310.0))],
+            failed: ['provider-a', 'provider-c'],
+        );
+
+        $result = $handler->handle($this->command());
+
+        self::assertCount(1, $result->quotes);
+        self::assertSame('provider-b', $result->cheapestProviderId());
+    }
+
     public function testItRecordsAPositiveDurationMs(): void
     {
         $handler = $this->handler(

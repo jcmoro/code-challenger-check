@@ -103,4 +103,35 @@ describe('useCalculate', () => {
     reset();
     expect(data.value).toBeNull();
   });
+
+  it('retry() re-runs the last submitted request', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError('Failed to fetch')) // first call: network error
+      .mockResolvedValueOnce(jsonResponse(SAMPLE_RESPONSE)); // retry: success
+
+    const { data, error, submit, retry } = useCalculate({
+      client: new ApiClient({ fetchImpl }),
+    });
+
+    await submit(SAMPLE_REQUEST);
+    expect(error.value?.kind).toBe('network');
+    expect(data.value).toBeNull();
+
+    await retry();
+
+    expect(error.value).toBeNull();
+    expect(data.value?.quotes[0].provider).toBe('provider-a');
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it('retry() is a no-op when no submit has happened yet', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(SAMPLE_RESPONSE));
+    const { retry, data } = useCalculate({ client: new ApiClient({ fetchImpl }) });
+
+    await retry();
+
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(data.value).toBeNull();
+  });
 });

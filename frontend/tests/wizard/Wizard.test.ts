@@ -86,6 +86,40 @@ describe('Wizard navigation', () => {
     expect(wrapper.find('input[type="radio"][value="Comercial"]').exists()).toBe(true);
   });
 
+  it('disables Continue on step 2 until a car_type is chosen', async () => {
+    const router = buildRouter();
+    router.push('/wizard/step2');
+    await router.isReady();
+
+    const wrapper = mount(WizardPage, { global: { plugins: [router] } });
+    await flushPromises();
+
+    const continueBtn = wrapper.get<HTMLButtonElement>('.wizard-shell__button--continue');
+    expect(continueBtn.element.disabled).toBe(true);
+
+    await wrapper.get('select[name="car_type"]').setValue('Compacto');
+    await flushPromises();
+
+    expect(continueBtn.element.disabled).toBe(false);
+  });
+
+  it('disables Continue on step 3 until a car_use is chosen', async () => {
+    const router = buildRouter();
+    router.push('/wizard/step3');
+    await router.isReady();
+
+    const wrapper = mount(WizardPage, { global: { plugins: [router] } });
+    await flushPromises();
+
+    const continueBtn = wrapper.get<HTMLButtonElement>('.wizard-shell__button--continue');
+    expect(continueBtn.element.disabled).toBe(true);
+
+    await wrapper.get('input[type="radio"][value="Privado"]').setValue();
+    await flushPromises();
+
+    expect(continueBtn.element.disabled).toBe(false);
+  });
+
   it('persists data across steps via the shared form-state injection', async () => {
     const router = buildRouter();
     router.push('/wizard/step1');

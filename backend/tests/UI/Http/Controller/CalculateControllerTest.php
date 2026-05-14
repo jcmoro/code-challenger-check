@@ -72,7 +72,7 @@ final class CalculateControllerTest extends WebTestCase
 
         self::assertSame(
             ['provider-c', 'provider-b', 'provider-a'],
-            array_map(static fn (array $q): string => $q['provider'], $body['quotes']),
+            array_map(static fn(array $q): string => $q['provider'], $body['quotes']),
         );
 
         self::assertTrue($body['quotes'][0]['is_cheapest']);
@@ -259,12 +259,14 @@ final class CalculateControllerTest extends WebTestCase
      */
     private function calculateResponse(): array
     {
-        /** @var CalculateResponseShape */
-        return json_decode(
+        /** @var CalculateResponseShape $body */
+        $body = json_decode(
             (string) $this->client->getResponse()->getContent(),
             true,
             flags: \JSON_THROW_ON_ERROR,
         );
+
+        return $body;
     }
 
     /**
@@ -272,11 +274,13 @@ final class CalculateControllerTest extends WebTestCase
      */
     private function problemDetailsResponse(): array
     {
-        /** @var ProblemDetailsShape */
-        return json_decode(
+        /** @var ProblemDetailsShape $body */
+        $body = json_decode(
             (string) $this->client->getResponse()->getContent(),
             true,
             flags: \JSON_THROW_ON_ERROR,
         );
+
+        return $body;
     }
 }

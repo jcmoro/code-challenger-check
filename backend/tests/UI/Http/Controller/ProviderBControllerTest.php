@@ -88,6 +88,26 @@ final class ProviderBControllerTest extends WebTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_BAD_REQUEST);
     }
 
+    /**
+     * Locks the assumption documented in docs/plan/replanning.md #4 — Provider B
+     * has no commercial-use uplift. The pricing service test enforces it
+     * internally; this asserts it through the actual HTTP boundary.
+     */
+    public function testCommercialUseProducesTheSamePriceAsPrivateForProviderB(): void
+    {
+        $this->withRandomness(50, 50);
+
+        $this->postXml('<SolicitudCotizacion><EdadConductor>30</EdadConductor><TipoCoche>turismo</TipoCoche><UsoCoche>privado</UsoCoche></SolicitudCotizacion>');
+        self::assertResponseIsSuccessful();
+        $privadoBody = $this->responseBody();
+
+        $this->postXml('<SolicitudCotizacion><EdadConductor>30</EdadConductor><TipoCoche>turismo</TipoCoche><UsoCoche>comercial</UsoCoche></SolicitudCotizacion>');
+        self::assertResponseIsSuccessful();
+        $comercialBody = $this->responseBody();
+
+        self::assertSame($privadoBody, $comercialBody, 'Provider B must price commercial == private');
+    }
+
     private function withRandomness(int ...$scripted): void
     {
         static::getContainer()->set(
