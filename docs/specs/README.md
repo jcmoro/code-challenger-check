@@ -11,11 +11,6 @@
 | [`schemas/`](schemas/README.md)            | JSON Schemas reutilizables (request, response, shared)                                     |
 | [`postman/`](postman/README.md)            | Colección Postman + entorno local para validación manual                                  |
 
-## Asíncrono / Kong
-
-`asyncapi/` y `kong/` no aparecen porque el proyecto no produce eventos ni usa
-Kong (ver `directives/DIR_api_docs.md` §6 y §8).
-
 ## Cómo se mantiene
 
 El spec OpenAPI versionable vive en `openapi/v1/openapi.yaml` y es la fuente

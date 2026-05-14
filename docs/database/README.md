@@ -18,16 +18,6 @@ Si en el futuro el alcance creciera (histórico de cotizaciones, A/B testing,
 usuarios autenticados), los ficheros documentados a continuación quedarían
 poblados según la directriz `directives/DIR_api_docs.md` §9.
 
-## Subcarpetas previstas pero **N/A**
-
-| Carpeta              | Para qué sería                                            | Estado en este proyecto |
-| -------------------- | --------------------------------------------------------- | ----------------------- |
-| `postgres/`          | Schemas de tablas PostgreSQL                              | N/A — sin DB            |
-| `mysql/`             | Schemas de tablas MySQL                                   | N/A — sin DB            |
-| `elasticsearch/`     | Mappings, alias, ILM                                      | N/A — sin ES            |
-| `kafka/topics.md`    | Listado de topics con particiones / retention             | N/A — sin Kafka         |
-| `kafka/messages.md`  | Catálogo de eventos producidos / consumidos               | N/A — sin Kafka         |
-
 ## Mapa de dependencias
 
 Aunque no haya base de datos, [`dependency-map.md`](dependency-map.md) sí

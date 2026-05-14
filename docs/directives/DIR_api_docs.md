@@ -251,7 +251,6 @@ docs/
 | `changelog.md` en raíz de `docs/`    | Obligatorio. Historial de cambios significativos.                                         |
 | `glossary.md` en raíz de `docs/`     | Obligatorio. Glosario del dominio.                                                        |
 | `specs/` separado de docs narrativos | Los specs son contratos machine-readable; los narrativos son human-readable.              |
-| Carpetas opcionales                  | `asyncapi/`, `kafka/`, `elasticsearch/`, `kong/` se omiten porque no aplican.            |
 | Sin ficheros sueltos en raíz         | Todo fichero pertenece a una carpeta con propósito claro.                                 |
 | `_assets/` para binarios             | Diagramas e imágenes van aquí, no dispersos por el árbol.                                 |
 
@@ -263,16 +262,13 @@ docs/
 | `docs/changelog.md`                           | Sí            | Siempre                                                    |
 | `docs/glossary.md`                            | Sí            | Siempre                                                    |
 | `docs/specs/openapi/`                         | Sí            | El servicio expone una API REST                            |
-| `docs/specs/asyncapi/`                        | **N/A**       | El proyecto no produce ni consume eventos                  |
 | `docs/specs/schemas/`                         | Sí            | El servicio tiene request/response bodies                  |
-| `docs/specs/kong/`                            | **N/A**       | No se usa Kong                                             |
 | `docs/specs/postman/`                         | Recomendado   | Útil para validación manual                                 |
 | `docs/architecture/dependencies.md`           | Sí            | Siempre                                                    |
 | `docs/architecture/business-rules.md`         | Sí            | Hay reglas observables con valor concreto (timeout, %, …) |
 | `docs/architecture/adr/`                      | Sí            | Mínimo el ADR del stack tecnológico                        |
 | `docs/database/`                              | Sí            | Aunque no haya BD, el `dependency-map.md` es obligatorio   |
 | `docs/database/dependency-map.md`             | Sí            | Siempre                                                    |
-| `docs/database/kafka/messages.md`             | **N/A**       | No hay Kafka                                                |
 | `docs/functional/`                            | Sí            | Aplica el resumen de flujos del dominio                    |
 | `docs/functional/flows/`                      | Recomendado   | El flujo `/calculate` tiene lógica cross-componente         |
 | `docs/operations/runbook.md`                  | Sí            | Siempre                                                    |
@@ -534,7 +530,6 @@ El pipeline (ver §15) valida:
 
 **N/A en este proyecto.** El proyecto usa nginx directo. Si se introdujera Kong:
 
-- Se generaría `docs/specs/kong/kong.json` desde el spec OpenAPI.
 - Se aplicarían las convenciones de naming (`{service}-{path}-{method}`),
   plugins (`jwt`, `rate-limiting`), timeouts (60 s) y hosts por entorno tal
   como define el directorio original §8.
