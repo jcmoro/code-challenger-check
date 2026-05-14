@@ -1,0 +1,233 @@
+openapi: 3.0.3
+
+info:
+  title: CHECK24 Car Insurance Comparison API
+  version: 1.0.0
+  description: |
+    Comparación de seguros de coche con tres proveedores simulados (JSON/XML/CSV).
+
+    ## Contexto de dominio
+    El servicio recibe los datos del conductor y del coche y, llamando en
+    paralelo a tres proveedores con un timeout de 10 segundos por proveedor,
+    devuelve los presupuestos supervivientes ordenados por precio ascendente,
+    con marca del más barato y descuento opcional del 5 % de campaña.
+
+    ## Failure semantics
+    Si uno o varios proveedores fallan (5xx, timeout, body no-parseable) se
+    omiten del resultado y se registran en `meta.failed_providers`. La
+    respuesta sigue siendo `200`.
+
+    ## Autenticación
+    Ninguna — el proyecto es un code challenge sin usuarios.
+  contact:
+    name: Project owner
+    email: jcmorodiaz@gmail.com
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:8080
+    description: Local nginx (default)
+
+tags:
+  - name: calculate
+    description: Endpoint orquestador para el cliente final.
+  - name: providers
+    description: Tres endpoints simulados que imitan proveedores reales con su latencia y tasa de fallo.
+
+paths:
+  /calculate:
+    post:
+      tags: [calculate]
+      operationId: postCalculate
+      summary: Comparar seguros de los tres proveedores
+      description: |
+        Computa la edad desde `driver_birthday`, llama en paralelo a los
+        proveedores configurados con timeout de 10 s, aplica el descuento de
+        campaña si procede, ordena ascendente por precio final y marca
+        `is_cheapest` en el más barato.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "../../schemas/requests/calculate.json"
+            example:
+              driver_birthday: "1992-02-24"
+              car_type: "Turismo"
+              car_use: "Privado"
+      responses:
+        "200":
+          description: Comparación completada (incluso si algún proveedor falló).
+          content:
+            application/json:
+              schema:
+                $ref: "../../schemas/responses/calculate.json"
+              example:
+                campaign:
+                  active: true
+                  percentage: 5.0
+                quotes:
+                  - provider: "provider-c"
+                    price:
+                      amount: 210.0
+                      currency: "EUR"
+                    discounted_price:
+                      amount: 199.5
+                      currency: "EUR"
+                    is_cheapest: true
+                  - provider: "provider-a"
+                    price:
+                      amount: 317.0
+                      currency: "EUR"
+                    discounted_price:
+                      amount: 301.15
+                      currency: "EUR"
+                    is_cheapest: false
+                meta:
+                  duration_ms: 5132
+                  failed_providers: ["provider-b"]
+        "400":
+          description: Entrada inválida (DTO no validado o edad < 18 / > 120).
+          content:
+            application/json:
+              schema:
+                $ref: "../../schemas/responses/problem-details.json"
+              example:
+                error: "validation_failed"
+                violations:
+                  - field: "driver_birthday"
+                    message: "driver must be at least 18 years old"
+
+  /provider-a/quote:
+    post:
+      tags: [providers]
+      operationId: postProviderAQuote
+      summary: Proveedor A — formato JSON
+      description: |
+        Proveedor simulado más rápido. Sleep 2 s, falla con HTTP 500 en el
+        10 % de las llamadas.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "../../schemas/requests/provider-a-quote.json"
+            example:
+              driver_age: 30
+              car_form: "suv"
+              car_use: "private"
+      responses:
+        "200":
+          description: Cotización del proveedor.
+          content:
+            application/json:
+              schema:
+                $ref: "../../schemas/responses/provider-a-quote.json"
+              example:
+                price: "295 EUR"
+        "400":
+          description: Cuerpo inválido o valores fuera de rango.
+          content:
+            application/json:
+              schema:
+                $ref: "../../schemas/responses/problem-details.json"
+        "500":
+          description: Fallo simulado del proveedor (10 % de las llamadas).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "provider_a_unavailable"
+
+  /provider-b/quote:
+    post:
+      tags: [providers]
+      operationId: postProviderBQuote
+      summary: Proveedor B — formato XML (vocabulario español)
+      description: |
+        Proveedor simulado más lento. Sleep 5 s; el 1 % de las llamadas añade
+        un sleep extra de 55 s — superando el timeout de 10 s del orquestador,
+        por diseño.
+      requestBody:
+        required: true
+        description: Cuerpo en XML con la solicitud de cotización.
+        content:
+          application/xml:
+            schema:
+              type: string
+              description: Documento XML con la raíz `SolicitudCotizacion`.
+            example: |
+              <SolicitudCotizacion>
+                <EdadConductor>30</EdadConductor>
+                <TipoCoche>turismo</TipoCoche>
+                <UsoCoche>privado</UsoCoche>
+              </SolicitudCotizacion>
+      responses:
+        "200":
+          description: Cotización en XML.
+          content:
+            application/xml:
+              schema:
+                type: string
+                description: XML con la raíz `RespuestaCotizacion`.
+              example: |
+                <RespuestaCotizacion>
+                  <Precio>300.0</Precio>
+                  <Moneda>EUR</Moneda>
+                </RespuestaCotizacion>
+        "400":
+          description: XML malformado o valores fuera de rango.
+
+  /provider-c/quote:
+    post:
+      tags: [providers]
+      operationId: postProviderCQuote
+      summary: Proveedor C — formato CSV
+      description: |
+        Proveedor simulado introducido como tercer proveedor (bonus senior).
+        Sleep 1 s; falla con HTTP 503 en el 5 % de las llamadas.
+      requestBody:
+        required: true
+        description: Cuerpo en CSV con cabecera + una fila de datos.
+        content:
+          text/csv:
+            schema:
+              type: string
+              description: CSV con cabecera `driver_age,car_form,car_use`.
+            example: |
+              driver_age,car_form,car_use
+              30,suv,private
+      responses:
+        "200":
+          description: Cotización en CSV.
+          content:
+            text/csv:
+              schema:
+                type: string
+                description: CSV con cabecera `price,currency`.
+              example: |
+                price,currency
+                330,EUR
+        "503":
+          description: Fallo simulado del proveedor (5 % de las llamadas).
+
+components:
+  schemas:
+    CalculateRequest:
+      $ref: "../../schemas/requests/calculate.json"
+    CalculateResponse:
+      $ref: "../../schemas/responses/calculate.json"
+    ProviderAQuoteRequest:
+      $ref: "../../schemas/requests/provider-a-quote.json"
+    ProviderAQuoteResponse:
+      $ref: "../../schemas/responses/provider-a-quote.json"
+    Money:
+      $ref: "../../schemas/shared/money.json"
+    Quote:
+      $ref: "../../schemas/shared/quote.json"
+    ProblemDetails:
+      $ref: "../../schemas/responses/problem-details.json"

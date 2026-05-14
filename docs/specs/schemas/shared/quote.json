@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schemas/shared/quote.json",
+  "title": "Quote",
+  "description": "Una cotización individual de un proveedor.",
+  "type": "object",
+  "required": ["provider", "price", "discounted_price", "is_cheapest"],
+  "additionalProperties": false,
+  "properties": {
+    "provider": {
+      "type": "string",
+      "description": "Identificador estable del proveedor.",
+      "enum": ["provider-a", "provider-b", "provider-c"],
+      "examples": ["provider-a"]
+    },
+    "price": {
+      "$ref": "money.json"
+    },
+    "discounted_price": {
+      "description": "Precio con descuento si la campaña está activa; null si no.",
+      "oneOf": [
+        { "$ref": "money.json" },
+        { "type": "null" }
+      ]
+    },
+    "is_cheapest": {
+      "type": "boolean",
+      "description": "true exactamente para un quote cuando hay ≥ 1 quote. Sirve para el badge 'oferta más barata' del frontend.",
+      "examples": [true]
+    }
+  }
+}

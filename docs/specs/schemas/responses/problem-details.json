@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schemas/responses/problem-details.json",
+  "title": "ProblemDetails",
+  "description": "Envelope estándar de error (RFC 9457 simplificado). El servicio devuelve este body para validation failures (HTTP 400).",
+  "type": "object",
+  "required": ["error", "violations"],
+  "additionalProperties": false,
+  "properties": {
+    "error": {
+      "type": "string",
+      "description": "Código de error en snake_case. Único valor actual: 'validation_failed'.",
+      "enum": ["validation_failed"],
+      "examples": ["validation_failed"]
+    },
+    "violations": {
+      "type": "array",
+      "description": "Lista de violaciones de validación por campo. Mínimo 1.",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["field", "message"],
+        "additionalProperties": false,
+        "properties": {
+          "field": {
+            "type": "string",
+            "description": "Path del campo que falló la validación (ej. driver_birthday, car_type).",
+            "examples": ["driver_birthday"]
+          },
+          "message": {
+            "type": "string",
+            "description": "Mensaje legible (en inglés o español según la regla).",
+            "examples": ["driver must be at least 18 years old"]
+          }
+        }
+      }
+    }
+  }
+}

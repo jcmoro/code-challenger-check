@@ -1,0 +1,111 @@
+{
+  "info": {
+    "name": "code-challenger-check24",
+    "_postman_id": "c24-collection-v1",
+    "description": "Validación manual del backend Symfony de comparación de seguros. Contiene los 4 endpoints HTTP: /calculate (orquestador) y los tres /provider-*/quote simulados.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "calculate",
+      "item": [
+        {
+          "name": "POST /calculate — happy path",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/calculate",
+              "host": ["{{base_url}}"],
+              "path": ["calculate"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"driver_birthday\": \"{{birthday}}\",\n  \"car_type\": \"{{car_type}}\",\n  \"car_use\": \"{{car_use}}\"\n}"
+            },
+            "description": "Llama en paralelo a los tres proveedores con timeout de 10 s, aplica descuento de campaña si activa, ordena ascendente por precio final. Tardará ~5 s (gateado por provider-b)."
+          }
+        },
+        {
+          "name": "POST /calculate — validation 400 (under-18)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/calculate",
+              "host": ["{{base_url}}"],
+              "path": ["calculate"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"driver_birthday\": \"2021-01-01\",\n  \"car_type\": \"Turismo\",\n  \"car_use\": \"Privado\"\n}"
+            },
+            "description": "Edad calculada < 18 → 400 validation_failed con violation en driver_birthday."
+          }
+        }
+      ]
+    },
+    {
+      "name": "providers",
+      "item": [
+        {
+          "name": "POST /provider-a/quote (JSON)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/provider-a/quote",
+              "host": ["{{base_url}}"],
+              "path": ["provider-a", "quote"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"driver_age\": 30,\n  \"car_form\": \"suv\",\n  \"car_use\": \"private\"\n}"
+            },
+            "description": "Proveedor A — JSON. Sleep 2 s, falla 10 % de las veces (HTTP 500)."
+          }
+        },
+        {
+          "name": "POST /provider-b/quote (XML)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/xml" },
+              { "key": "Accept", "value": "application/xml" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/provider-b/quote",
+              "host": ["{{base_url}}"],
+              "path": ["provider-b", "quote"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "<SolicitudCotizacion>\n  <EdadConductor>30</EdadConductor>\n  <TipoCoche>turismo</TipoCoche>\n  <UsoCoche>privado</UsoCoche>\n</SolicitudCotizacion>"
+            },
+            "description": "Proveedor B — XML español. Sleep 5 s. El 1 % de las llamadas añade +55 s adicionales (excede los 10 s de timeout por diseño)."
+          }
+        },
+        {
+          "name": "POST /provider-c/quote (CSV)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "text/csv" }],
+            "url": {
+              "raw": "{{base_url}}/provider-c/quote",
+              "host": ["{{base_url}}"],
+              "path": ["provider-c", "quote"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "driver_age,car_form,car_use\n30,suv,private\n"
+            },
+            "description": "Proveedor C — CSV. Sleep 1 s, falla 5 % de las veces (HTTP 503)."
+          }
+        }
+      ]
+    }
+  ]
+}

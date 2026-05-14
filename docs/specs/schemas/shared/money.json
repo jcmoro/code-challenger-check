@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schemas/shared/money.json",
+  "title": "Money",
+  "description": "Importe monetario. El servicio siempre devuelve EUR.",
+  "type": "object",
+  "required": ["amount", "currency"],
+  "additionalProperties": false,
+  "properties": {
+    "amount": {
+      "type": "number",
+      "format": "float",
+      "minimum": 0,
+      "description": "Importe con dos decimales. La serialización backend preserva el .0 final via JSON_PRESERVE_ZERO_FRACTION.",
+      "examples": [295.0, 280.25]
+    },
+    "currency": {
+      "type": "string",
+      "pattern": "^[A-Z]{3}$",
+      "description": "Código ISO 4217. El servicio sólo emite 'EUR'.",
+      "examples": ["EUR"]
+    }
+  }
+}

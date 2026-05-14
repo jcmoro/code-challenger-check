@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schemas/responses/provider-a-quote.json",
+  "title": "ProviderAQuoteResponse",
+  "description": "Respuesta del proveedor A. El precio se serializa como 'N EUR' (string), no como número, para reflejar fielmente el formato del proveedor simulado.",
+  "type": "object",
+  "required": ["price"],
+  "additionalProperties": false,
+  "properties": {
+    "price": {
+      "type": "string",
+      "pattern": "^\\d+ EUR$",
+      "description": "Precio entero seguido del literal ' EUR'.",
+      "examples": ["295 EUR"]
+    }
+  }
+}

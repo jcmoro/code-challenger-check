@@ -71,7 +71,7 @@ quote highlighted. Note that `provider-a` is missing from this run — it hit th
 simulated 10% random failure (the backend dropped it from the response with a
 JSON log line; the UI shows the surviving providers only).
 
-![Single-page form and results](docs/screenshot-home.png)
+![Single-page form and results](docs/_assets/screenshot-home.png)
 
 ### Wizard result page (`/wizard/result`)
 
@@ -80,7 +80,7 @@ shared `QuoteResults` component with the campaign banner, ascending sort, and
 cheapest highlight. The two CTAs at the bottom let the user restart the wizard
 or fall back to the single-page form.
 
-![Wizard result page](docs/screenshot-wizard-result.png)
+![Wizard result page](docs/_assets/screenshot-wizard-result.png)
 
 ### Responsive layout (narrow viewport)
 
@@ -88,7 +88,7 @@ The `.page` container drops to `max-width: 480px` below tablet breakpoints; the
 results table reflows without horizontal scroll, and the form fields keep their
 labels stacked. All three providers responded for this run.
 
-![Responsive mobile view](docs/screenshot-mobile.png)
+![Responsive mobile view](docs/_assets/screenshot-mobile.png)
 
 ---
 

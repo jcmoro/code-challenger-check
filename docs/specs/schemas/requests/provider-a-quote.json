@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schemas/requests/provider-a-quote.json",
+  "title": "ProviderAQuoteRequest",
+  "description": "Cuerpo del POST /provider-a/quote. Vocabulario interno del proveedor A.",
+  "type": "object",
+  "required": ["driver_age", "car_form", "car_use"],
+  "additionalProperties": false,
+  "properties": {
+    "driver_age": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 120,
+      "description": "Edad del conductor en años cumplidos.",
+      "examples": [30]
+    },
+    "car_form": {
+      "type": "string",
+      "enum": ["suv", "compact"],
+      "description": "Categoría del coche en el vocabulario del proveedor A. 'Turismo' del usuario se mapea a 'compact'.",
+      "examples": ["suv"]
+    },
+    "car_use": {
+      "type": "string",
+      "enum": ["private", "commercial"],
+      "description": "Uso del coche en vocabulario canónico (inglés).",
+      "examples": ["private"]
+    }
+  }
+}

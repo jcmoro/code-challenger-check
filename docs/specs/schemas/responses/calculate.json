@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schemas/responses/calculate.json",
+  "title": "CalculateResponse",
+  "description": "Resultado del POST /calculate. Devuelve siempre HTTP 200 (incluso si algún proveedor falló); los fallidos quedan en meta.failed_providers.",
+  "type": "object",
+  "required": ["campaign", "quotes", "meta"],
+  "additionalProperties": false,
+  "properties": {
+    "campaign": {
+      "type": "object",
+      "description": "Estado de la campaña activa en el momento de cotizar.",
+      "required": ["active", "percentage"],
+      "additionalProperties": false,
+      "properties": {
+        "active": {
+          "type": "boolean",
+          "description": "true cuando CAMPAIGN_ACTIVE=true en el entorno.",
+          "examples": [true]
+        },
+        "percentage": {
+          "type": "number",
+          "format": "float",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Porcentaje de descuento que CHECK24 cubre cuando la campaña está activa.",
+          "examples": [5.0]
+        }
+      }
+    },
+    "quotes": {
+      "type": "array",
+      "description": "Cotizaciones ordenadas ascendentes por final price (discounted_price si existe, price en otro caso). Desempate por provider_id alfabético.",
+      "items": {
+        "$ref": "../shared/quote.json"
+      }
+    },
+    "meta": {
+      "type": "object",
+      "description": "Información operativa de la respuesta.",
+      "required": ["duration_ms", "failed_providers"],
+      "additionalProperties": false,
+      "properties": {
+        "duration_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Duración total del handler medida en milisegundos.",
+          "examples": [5132]
+        },
+        "failed_providers": {
+          "type": "array",
+          "description": "Ids de los proveedores que no produjeron quote válido (5xx, timeout, parse error).",
+          "items": {
+            "type": "string",
+            "examples": ["provider-b"]
+          }
+        }
+      }
+    }
+  }
+}

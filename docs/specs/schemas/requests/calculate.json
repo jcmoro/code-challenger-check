@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schemas/requests/calculate.json",
+  "title": "CalculateRequest",
+  "description": "Cuerpo del POST /calculate. Datos mínimos para cotizar.",
+  "type": "object",
+  "required": ["driver_birthday", "car_type", "car_use"],
+  "additionalProperties": false,
+  "properties": {
+    "driver_birthday": {
+      "type": "string",
+      "format": "date",
+      "description": "Fecha de nacimiento ISO-8601. El backend rechaza fechas futuras y edades fuera de [18, 120].",
+      "examples": ["1992-02-24"]
+    },
+    "car_type": {
+      "type": "string",
+      "enum": ["Turismo", "SUV", "Compacto"],
+      "description": "Categoría del coche en vocabulario del usuario.",
+      "examples": ["Turismo"]
+    },
+    "car_use": {
+      "type": "string",
+      "enum": ["Privado", "Comercial", "Commercial"],
+      "description": "Uso del coche. Se acepta el sinónimo en inglés 'Commercial'.",
+      "examples": ["Privado"]
+    }
+  }
+}
