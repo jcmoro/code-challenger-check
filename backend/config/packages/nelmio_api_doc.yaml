@@ -1,0 +1,20 @@
+nelmio_api_doc:
+    documentation:
+        info:
+            title: CHECK24 Car Insurance Comparison API
+            description: |
+                Compares car-insurance quotes from multiple simulated providers.
+                See `docs/plan/specification.md` for the contract and behaviour.
+            version: 1.0.0
+        servers:
+            - url: http://localhost:8080
+              description: Local nginx (default)
+        tags:
+            - name: calculate
+              description: Aggregated comparison endpoint
+            - name: providers
+              description: Simulated upstream insurance providers
+    areas:
+        default:
+            path_patterns:
+                - ^/(calculate|provider-[abc]/quote)$

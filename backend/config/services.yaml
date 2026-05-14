@@ -1,0 +1,34 @@
+parameters:
+
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    App\:
+        resource: '../src/'
+        exclude:
+            - '../src/Kernel.php'
+
+    # Bind system-service interfaces to their default implementations.
+    # Aliases are public so tests can swap them via static::getContainer()->set().
+    App\Infrastructure\System\RandomnessProvider:
+        alias: App\Infrastructure\System\MtRandomnessProvider
+        public: true
+
+    App\Infrastructure\System\Clock:
+        alias: App\Infrastructure\System\SystemClock
+        public: true
+
+    # Campaign provider: default implementation reads env vars.
+    App\Application\Campaign\CampaignProvider:
+        alias: App\Application\Campaign\EnvCampaignProvider
+        public: true
+
+    # Quote fetcher: default implementation fans out in parallel.
+    App\Application\Provider\QuoteFetcher:
+        alias: App\Application\Provider\ParallelQuoteFetcher
+        public: true
+
+    # XML encoder/decoder used by Provider B's controller.
+    Symfony\Component\Serializer\Encoder\XmlEncoder: ~

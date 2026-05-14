@@ -1,0 +1,54 @@
+services:
+  backend:
+    build:
+      context: ./docker/php
+      dockerfile: Dockerfile
+    container_name: c24-backend
+    working_dir: /app
+    environment:
+      APP_ENV: ${APP_ENV:-dev}
+      APP_DEBUG: ${APP_DEBUG:-1}
+      CAMPAIGN_ACTIVE: ${CAMPAIGN_ACTIVE:-true}
+      CAMPAIGN_PERCENTAGE: ${CAMPAIGN_PERCENTAGE:-5.0}
+      PROVIDER_TIMEOUT_SECONDS: ${PROVIDER_TIMEOUT_SECONDS:-10}
+      PROVIDER_A_BASE_URL: ${PROVIDER_A_BASE_URL:-http://nginx/provider-a}
+      PROVIDER_B_BASE_URL: ${PROVIDER_B_BASE_URL:-http://nginx/provider-b}
+      PROVIDER_C_BASE_URL: ${PROVIDER_C_BASE_URL:-http://nginx/provider-c}
+      CORS_ALLOW_ORIGIN: ${CORS_ALLOW_ORIGIN:-http://localhost:5173}
+    volumes:
+      - ./backend:/app
+    networks:
+      - c24
+
+  nginx:
+    build:
+      context: ./docker/nginx
+      dockerfile: Dockerfile
+    container_name: c24-nginx
+    depends_on:
+      - backend
+    ports:
+      - "${NGINX_HOST_PORT:-8080}:80"
+    volumes:
+      - ./backend:/app:ro
+    networks:
+      - c24
+
+  frontend:
+    build:
+      context: ./docker/node
+      dockerfile: Dockerfile
+    container_name: c24-frontend
+    working_dir: /app
+    environment:
+      VITE_API_BASE: ${VITE_API_BASE:-http://localhost:8080}
+    volumes:
+      - ./frontend:/app
+    ports:
+      - "${VITE_HOST_PORT:-5173}:5173"
+    networks:
+      - c24
+
+networks:
+  c24:
+    driver: bridge

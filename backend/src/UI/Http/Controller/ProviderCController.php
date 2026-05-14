@@ -1,0 +1,100 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\UI\Http\Controller;
+
+use App\Domain\Car\CarForm;
+use App\Domain\Car\CarUse;
+use App\Domain\Driver\DriverAge;
+use App\Infrastructure\Provider\C\ProviderCPricingService;
+use App\Infrastructure\System\Clock;
+use App\Infrastructure\System\RandomnessProvider;
+use OpenApi\Attributes as OA;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Routing\Attribute\Route;
+
+#[Route('/provider-c/quote', methods: ['POST'])]
+#[OA\Tag(name: 'providers')]
+#[OA\RequestBody(
+    description: 'CSV quote request with one data row.',
+    content: new OA\MediaType(mediaType: 'text/csv', example: "driver_age,car_form,car_use\n30,suv,private"),
+)]
+#[OA\Response(
+    response: 200,
+    description: 'Quote response as CSV.',
+    content: new OA\MediaType(mediaType: 'text/csv', example: "price,currency\n330,EUR"),
+)]
+#[OA\Response(response: 503, description: 'Simulated upstream failure (5% rate).')]
+final readonly class ProviderCController
+{
+    private const int LATENCY_SECONDS = 1;
+    private const int ERROR_PERCENT = 5;
+
+    private const string CONTENT_TYPE = 'text/csv; charset=UTF-8';
+
+    public function __construct(
+        private ProviderCPricingService $pricing,
+        private RandomnessProvider $random,
+        private Clock $clock,
+    ) {}
+
+    public function __invoke(Request $request): Response
+    {
+        $this->clock->sleep(self::LATENCY_SECONDS);
+
+        if ($this->random->intInRange(1, 100) <= self::ERROR_PERCENT) {
+            return $this->error('provider_c_unavailable', Response::HTTP_SERVICE_UNAVAILABLE);
+        }
+
+        $data = $this->parseCsv($request->getContent());
+        if (null === $data) {
+            return $this->error('invalid_csv', Response::HTTP_BAD_REQUEST);
+        }
+
+        $form = CarForm::tryFrom($data['car_form'] ?? '');
+        $use = CarUse::tryFrom($data['car_use'] ?? '');
+        if (null === $form || null === $use) {
+            return $this->error('invalid_request', Response::HTTP_BAD_REQUEST);
+        }
+
+        try {
+            $age = new DriverAge((int) ($data['driver_age'] ?? -1));
+        } catch (\DomainException) {
+            return $this->error('invalid_age', Response::HTTP_BAD_REQUEST);
+        }
+
+        $price = $this->pricing->priceFor($age, $form, $use);
+
+        return new Response(
+            "price,currency\n{$price},EUR\n",
+            Response::HTTP_OK,
+            ['Content-Type' => self::CONTENT_TYPE],
+        );
+    }
+
+    /**
+     * @return array<string, string>|null
+     */
+    private function parseCsv(string $body): ?array
+    {
+        $lines = array_values(array_filter(array_map('trim', explode("\n", trim($body))), static fn(string $l): bool => '' !== $l));
+        if (2 !== \count($lines)) {
+            return null;
+        }
+
+        $headers = array_map(static fn(?string $v): string => (string) $v, str_getcsv($lines[0], escape: '\\'));
+        $values = array_map(static fn(?string $v): string => (string) $v, str_getcsv($lines[1], escape: '\\'));
+        if (\count($headers) !== \count($values)) {
+            return null;
+        }
+
+        return array_combine($headers, $values);
+    }
+
+    private function error(string $code, int $status): Response
+    {
+        return new Response("error\n{$code}\n", $status, ['Content-Type' => self::CONTENT_TYPE]);
+    }
+}

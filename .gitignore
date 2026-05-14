@@ -1,0 +1,35 @@
+# Environment
+.env
+.env.local
+.env.local.php
+.env.*.local
+!.env.example
+
+# Backend (Symfony)
+/backend/vendor/
+/backend/var/
+/backend/.phpunit.result.cache
+/backend/.phpunit.cache/
+/backend/.php-cs-fixer.cache
+/backend/.phpstan.cache/
+/backend/public/bundles/
+
+# Frontend (Vue / Vite)
+/frontend/node_modules/
+/frontend/dist/
+/frontend/coverage/
+/frontend/.vite/
+/frontend/.eslintcache
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Docker
+docker-compose.local.yml
+
+.temp

@@ -1,0 +1,355 @@
+:root {
+  --text: #2a2a2a;
+  --muted: #6b6375;
+  --bg: #ffffff;
+  --border: #e0e0e0;
+  --accent: #0066cc;
+  --error: #c0392b;
+  --success: #27ae60;
+  --highlight-bg: #fff7d6;
+  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
+
+  font: 16px/1.5 var(--sans);
+  color: var(--text);
+  background: var(--bg);
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text: #e0e0e0;
+    --muted: #9ca3af;
+    --bg: #16171d;
+    --border: #2e303a;
+    --highlight-bg: #3a3220;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+h1 {
+  font-size: 1.75rem;
+  margin: 0 0 1rem;
+}
+
+/* --- Form -------------------------------------------------- */
+
+.field {
+  display: block;
+  margin-bottom: 1rem;
+}
+
+.field__label {
+  display: block;
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+}
+
+.field__input {
+  width: 100%;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+}
+
+.field__input[aria-invalid='true'] {
+  border-color: var(--error);
+}
+
+.field__error {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--error);
+  font-size: 0.85rem;
+}
+
+.field--radio {
+  border: none;
+  padding: 0;
+}
+
+.radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-right: 1rem;
+}
+
+.quote-form__submit {
+  margin-top: 0.5rem;
+  padding: 0.6rem 1.2rem;
+  font: inherit;
+  font-weight: 600;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.quote-form__submit:disabled {
+  background: var(--muted);
+  cursor: not-allowed;
+}
+
+/* --- Results ----------------------------------------------- */
+
+.campaign-banner {
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  background: var(--highlight-bg);
+  border-left: 4px solid var(--accent);
+  border-radius: 4px;
+}
+
+.quote-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.quote-table th,
+.quote-table td {
+  padding: 0.6rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.quote-table th {
+  background: var(--highlight-bg);
+  font-weight: 600;
+}
+
+.sort-toggle {
+  margin-left: 0.5rem;
+  padding: 0 0.4rem;
+  font: inherit;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.quote-row--cheapest {
+  font-weight: 600;
+  background: var(--highlight-bg);
+}
+
+.price--strikethrough {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+
+.price--discounted {
+  font-weight: 600;
+  color: var(--success);
+}
+
+.price--empty {
+  color: var(--muted);
+}
+
+.cheapest-badge {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* --- Feedback ---------------------------------------------- */
+
+.empty-results,
+.loading {
+  margin: 1rem 0;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.error {
+  padding: 0.75rem 1rem;
+  margin: 1rem 0;
+  border-left: 4px solid var(--error);
+  background: rgba(192, 57, 43, 0.08);
+  border-radius: 4px;
+}
+
+.error__violations {
+  margin: 0.5rem 0;
+  padding-left: 1.25rem;
+}
+
+.error__retry {
+  margin-top: 0.5rem;
+  padding: 0.4rem 0.8rem;
+  background: var(--error);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+/* --- Page container (responsive) ---------------------------- */
+
+.page {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 1.25rem 1rem;
+}
+
+.page__title {
+  margin-bottom: 1rem;
+}
+
+.page__alt-link {
+  display: inline-block;
+  margin-bottom: 1.25rem;
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 0.95rem;
+}
+.page__alt-link:hover {
+  text-decoration: underline;
+}
+
+@media (min-width: 640px) {
+  .page {
+    max-width: 640px;
+    padding: 2rem 1.5rem;
+  }
+}
+
+@media (min-width: 960px) {
+  .page {
+    max-width: 960px;
+    padding: 2.5rem 2rem;
+  }
+}
+
+/* --- Wizard chrome ------------------------------------------ */
+
+.wizard__viewport {
+  position: relative;
+  overflow: hidden;
+  min-height: 18rem;
+}
+
+.wizard-step {
+  /* Each step gets absolute positioning during transitions only — see
+     the .slide-* rules below. */
+  width: 100%;
+}
+
+.wizard-step__heading {
+  font-size: 1.25rem;
+  margin: 0 0 1rem;
+}
+
+.wizard-shell {
+  margin-top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.wizard-shell__progress {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.wizard-shell__actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.wizard-shell__button {
+  flex: 1;
+  padding: 0.6rem 1rem;
+  font: inherit;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.wizard-shell__button--back {
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+
+.wizard-shell__button:disabled {
+  background: var(--muted);
+  color: white;
+  cursor: not-allowed;
+}
+
+.wizard-result__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+}
+.wizard-result__actions .wizard-shell__button {
+  flex: 1 1 auto;
+}
+
+/* --- iOS-style slide transitions ---------------------------- */
+
+.slide-forward-enter-active,
+.slide-forward-leave-active,
+.slide-back-enter-active,
+.slide-back-leave-active {
+  transition: transform 0.3s ease;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+}
+
+.slide-forward-enter-from {
+  transform: translateX(100%);
+}
+.slide-forward-enter-to {
+  transform: translateX(0);
+}
+.slide-forward-leave-from {
+  transform: translateX(0);
+}
+.slide-forward-leave-to {
+  transform: translateX(-100%);
+}
+
+.slide-back-enter-from {
+  transform: translateX(-100%);
+}
+.slide-back-enter-to {
+  transform: translateX(0);
+}
+.slide-back-leave-from {
+  transform: translateX(0);
+}
+.slide-back-leave-to {
+  transform: translateX(100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .slide-forward-enter-active,
+  .slide-forward-leave-active,
+  .slide-back-enter-active,
+  .slide-back-leave-active {
+    transition: none;
+  }
+}
