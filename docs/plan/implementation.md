@@ -26,7 +26,7 @@
 | HTTP client | `symfony/http-client` | Native multiplexed parallel `stream()` — perfect for provider fan-out. |
 | API docs | `nelmio/api-doc-bundle` | Industry standard, auto-derives schemas. |
 | Testing (BE) | PHPUnit 11 | Symfony-default; mature. |
-| Static analysis | PHPStan + `phpstan-symfony` | Level 8/max. |
+| Static analysis | PHPStan + `phpstan-symfony` | Level 10 (raised from 8 in post-Phase 8 polish — see replanning #25). |
 | Code style | PHP-CS-Fixer (`@Symfony`, `@PER-CS`) | Idiomatic Symfony. |
 | Logging | Monolog (JSON formatter to stderr) | Container-friendly. |
 | Frontend framework | Vue 3 (`<script setup>`) | Spec mandates Vue. |

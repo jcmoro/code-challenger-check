@@ -759,7 +759,7 @@ GitLab/GitHub Actions productivo), las equivalencias locales son:
 | Validar JSON Schemas          | (futuro) `ajv compile docs/specs/schemas/**/*.json` | Sí      |
 | Tests backend (PHPUnit)       | `make test-backend`                                 | Sí      |
 | Tests frontend (Vitest)       | `make test-frontend`                                | Sí      |
-| PHPStan max                   | `make stan`                                         | Sí      |
+| PHPStan level 10              | `make stan`                                         | Sí      |
 | PHP-CS-Fixer dry-run          | `make cs`                                           | Sí      |
 | ESLint                        | `make eslint`                                       | Sí      |
 | Prettier --check              | `make prettier`                                     | Sí      |

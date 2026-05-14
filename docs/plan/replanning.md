@@ -362,6 +362,39 @@ step 3 → result as between any two steps.
 **Cost / risk:** None.
 **Author:** project owner.
 
+### 25. PHPStan raised from level 8 → 10 (the strictest) <2026-05-15>
+**Trigger:** Post-Phase-8 polish. The original requirements set the bar at
+"≥ level 8" with `max` as a stretch goal (R7 in §4 of this doc). With the
+codebase well-typed at level 8, climbing further surfaced 41 errors at
+level 9, all in three files; level 10 then passed with no additional
+changes (level 10 only adds checks on top of level 9 for `mixed`).
+**Change:**
+- `phpstan.dist.neon` → `level: 10`.
+- `ParallelQuoteFetcher`: typed `\SplObjectStorage<ResponseInterface, QuoteProvider>`
+  (and four sibling locals) so `$providersByResponse[$response]` returns
+  `QuoteProvider` instead of `mixed`.
+- `CalculateControllerTest`: declared `@phpstan-type` aliases on the class
+  (`MoneyShape`, `QuoteShape`, `CampaignShape`, `MetaShape`,
+  `CalculateResponseShape`, `ProblemDetailsShape`); replaced `responseJson()`
+  with two typed helpers (`calculateResponse()` and `problemDetailsResponse()`).
+  Added one `assertNotNull(...)` before dereferencing `discounted_price`.
+- `ProviderAControllerTest`: added `@var array{price: string}` /
+  `array{error: string}` annotations on two `json_decode()` results that
+  were missing them.
+**Impact:**
+- `make stan` returns `[OK] No errors` at level 10.
+- 91/91 backend tests still green (+1 assertion from the explicit
+  `assertNotNull` guard).
+- Documentation references to "PHPStan max" / "level 8" updated across
+  `README.md`, `docs/README.md`, `docs/architecture/README.md`,
+  `docs/directives/DIR_api_docs.md`, `docs/plan/{constitution,
+  requirements, implementation, validation}.md`. Historical narrative
+  (Phase 0/1 exit criteria, replanning #9) intentionally left alone.
+**Cost / risk:** None observed. The type annotations make the test code
+slightly more verbose but also self-documenting (the `@phpstan-type` block
+serves as a one-stop reference for the response shape).
+**Author:** project owner.
+
 ---
 
 ## 6. Out-of-Scope, Re-Opened If Asked

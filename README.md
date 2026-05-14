@@ -41,7 +41,7 @@ make build         # build all images
 make install       # composer install + npm install (inside containers)
 make up-d          # start the stack in the background
 make test          # run all 132 tests (91 backend + 41 frontend)
-make lint          # PHPStan max + PHP-CS-Fixer + ESLint + Prettier + vue-tsc
+make lint          # PHPStan level 10 + PHP-CS-Fixer + ESLint + Prettier + vue-tsc
 ```
 
 Then open in a browser:

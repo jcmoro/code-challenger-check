@@ -90,7 +90,7 @@ extend the system without rewriting it.
 | 4 | A failing/slow provider is logged and dropped, never propagated as a 5xx. | Spec requirement; resilience. |
 | 5 | Tests for: provider pricing, sort order, campaign discount, timeout handling. | Spec requirement. |
 | 6 | Strict types end-to-end (PHP `declare(strict_types=1)`, TS `strict: true`). | Catch bugs at compile time. |
-| 7 | Static analysis at the highest reasonable level (PHPStan ≥ level 8, ESLint, tsc). | Catch bugs before runtime. |
+| 7 | Static analysis at the strictest level (PHPStan **level 10**, ESLint, tsc strict). | Catch bugs before runtime. |
 | 8 | Frontend never hard-codes pricing/discount values. | Server is the single source of truth. |
 | 9 | Form state survives reload, not tab close (`sessionStorage`). | Spec requirement. |
 | 10 | The cheapest quote is visually highlighted; "No hay ofertas disponibles." is shown when both providers fail. | Spec requirement. |

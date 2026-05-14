@@ -27,7 +27,7 @@ A change is *only* considered complete when every layer beneath it is green.
 
 | Gate | Tool | Pass criterion |
 |------|------|----------------|
-| PHP types | `phpstan` | Exit 0 at level **8** (target: `max`) over `backend/src` |
+| PHP types | `phpstan` | Exit 0 at level **10** (the strictest level) over `backend/src` and `backend/tests` |
 | PHP style | `php-cs-fixer` | `--dry-run --diff` exits 0 |
 | TS types | `vue-tsc --noEmit` | Exit 0 |
 | TS lint | `eslint` | Exit 0 with `--max-warnings 0` |

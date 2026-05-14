@@ -21,7 +21,7 @@ no-parseable) se omiten del resultado sin propagar el error.
 | API docs             | `nelmio/api-doc-bundle`             | ^5.10   |
 | Logging              | `symfony/monolog-bundle`            | ^4.0    |
 | Tests backend        | PHPUnit                             | 13.x    |
-| Static analysis      | PHPStan max + PHP-CS-Fixer          | —       |
+| Static analysis      | PHPStan level 10 + PHP-CS-Fixer     | —       |
 | Lenguaje (frontend)  | TypeScript                          | ~6.0    |
 | Framework            | Vue.js                              | 3.5     |
 | Router               | vue-router                          | ^4.6    |

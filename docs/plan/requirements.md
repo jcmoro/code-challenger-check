@@ -156,7 +156,7 @@ layout (mobile / tablet / desktop).
 - Frontend components are tested with Vitest + Vue Test Utils.
 
 ### NFR-5 — Maintainability
-- PHPStan level 8 (or `max`) green.
+- PHPStan level 10 (the strictest level) green.
 - ESLint + Prettier green; TypeScript strict.
 - No dead code, no `// TODO` left without an issue.
 
@@ -204,7 +204,7 @@ invocations. Required targets (minimum):
 No target may require the user to `cd` into a sub-directory first.
 
 ### PR-3 — Static code analysis
-- **Backend:** PHPStan at the highest practical level (target: 8 / max),
+- **Backend:** PHPStan at level 10 (the strictest level — every `mixed` narrowed at boundary),
   PHP-CS-Fixer with `@Symfony` + `@PER-CS` rulesets.
 - **Frontend:** ESLint (Vue 3 + TypeScript recommended configs),
   Prettier, `tsc --noEmit` in strict mode.

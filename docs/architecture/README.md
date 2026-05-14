@@ -37,7 +37,7 @@ El servicio cubre dos audiencias:
 | API docs              | `nelmio/api-doc-bundle` + `zircote/swagger-php` | ^5.10   |
 | Logging               | `symfony/monolog-bundle`              | ^4.0    |
 | Tests                 | PHPUnit                               | 13.x    |
-| Static analysis       | PHPStan max + PHP-CS-Fixer            | —       |
+| Static analysis       | PHPStan level 10 + PHP-CS-Fixer       | —       |
 | Frontend lenguaje     | TypeScript                            | ~6.0    |
 | Frontend framework    | Vue.js                                | 3.5     |
 | Frontend build/dev    | Vite                                  | ^8.0    |
