@@ -94,23 +94,72 @@ labels stacked. All three providers responded for this run.
 
 ## Make targets
 
-`make help` prints the live list. The ones you'll actually use:
+`make help` prints the live, colour-coded menu. Targets are grouped by
+workflow — the seven groups below mirror what you'll see there.
 
-| Target                                 | Purpose                                                                |
-| -------------------------------------- | ---------------------------------------------------------------------- |
-| `make help`                            | Show every target with a one-line description                          |
-| `make build`                           | Build the three Docker images (backend, frontend, nginx)               |
-| `make up` / `make up-d`                | Start the stack (foreground / detached)                                |
-| `make down`                            | Stop the stack (keeps volumes)                                         |
-| `make logs`                            | Tail logs from every service                                           |
-| `make ps`                              | Show running services                                                  |
-| `make shell-backend` / `shell-frontend`| Open a shell inside the respective container                           |
-| `make install`                         | `composer install` + `npm install`                                     |
-| `make test`                            | Backend (PHPUnit) + frontend (Vitest) suites                           |
-| `make test-backend` / `test-frontend`  | Run just one side                                                      |
-| `make lint`                            | PHPStan + PHP-CS-Fixer (dry-run) + ESLint + Prettier + vue-tsc         |
-| `make fix`                             | Auto-fix what's auto-fixable                                           |
-| `make clean`                           | Remove containers, volumes, and caches (with a confirmation prompt)    |
+### Setup — first-time and one-off
+
+| Target                  | Purpose                                                                  |
+| ----------------------- | ------------------------------------------------------------------------ |
+| `make bootstrap`        | One-time — create Symfony & Vue projects via throwaway containers (idempotent; skips if already present) |
+| `make bootstrap-backend`  | Just the Symfony skeleton (`composer create-project symfony/skeleton:^7.3 backend`) |
+| `make bootstrap-frontend` | Just the Vue skeleton (`npm create vite@latest frontend -- --template vue-ts`) |
+| `make build`            | Build the three Docker images (backend, frontend, nginx)                 |
+| `make install`          | `composer install` + `npm ci`                                            |
+| `make install-backend`  | Just `composer install` inside the backend image                         |
+| `make install-frontend` | Just `npm ci` inside the frontend image                                  |
+
+### Run — daily lifecycle
+
+| Target          | Purpose                              |
+| --------------- | ------------------------------------ |
+| `make up`       | Start the full stack (foreground)    |
+| `make up-d`     | Start the full stack (detached)      |
+| `make down`     | Stop the stack (keeps named volumes) |
+| `make logs`     | Tail logs from every service         |
+| `make ps`       | Show running services                |
+
+### Containers — drop into a shell
+
+| Target                | Purpose                                       |
+| --------------------- | --------------------------------------------- |
+| `make shell-backend`  | Bash shell inside the backend (PHP) container |
+| `make shell-frontend` | Sh shell inside the frontend (Node) container |
+
+### Test — PHPUnit + Vitest
+
+| Target               | Purpose                                |
+| -------------------- | -------------------------------------- |
+| `make test`          | Run all tests (backend + frontend)     |
+| `make test-backend`  | Just PHPUnit (91 cases)                |
+| `make test-frontend` | Just Vitest (41 cases)                 |
+
+### Quality — lint + static analysis (check mode)
+
+| Target           | Purpose                                                       |
+| ---------------- | ------------------------------------------------------------- |
+| `make lint`      | Run every check (stan + cs + eslint + prettier + typecheck)   |
+| `make stan`      | PHPStan analysis                                              |
+| `make cs`        | PHP-CS-Fixer (dry-run, fails on drift)                        |
+| `make eslint`    | ESLint (fails on any warning)                                 |
+| `make prettier`  | Prettier `--check`                                            |
+| `make typecheck` | `vue-tsc --noEmit` (strict TypeScript)                        |
+
+### Fix — auto-fixers in write mode
+
+| Target              | Purpose                                  |
+| ------------------- | ---------------------------------------- |
+| `make fix`          | Apply every auto-fixer                   |
+| `make fix-backend`  | PHP-CS-Fixer in write mode               |
+| `make fix-frontend` | ESLint `--fix` + Prettier `--write`      |
+
+### Reset — destructive, prompts first
+
+| Target       | Purpose                                                                |
+| ------------ | ---------------------------------------------------------------------- |
+| `make clean` | Remove containers, named volumes, and build artefacts (asks `[y/N]`)   |
+
+Plus `make help` (the default goal) to print the live menu.
 
 ---
 
