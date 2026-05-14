@@ -3,14 +3,16 @@ import type { Violation } from '@/domain/types';
 export type ApiErrorKind = 'network' | 'validation' | 'server' | 'unknown';
 
 export class ApiError extends Error {
-  constructor(
-    public readonly kind: ApiErrorKind,
-    message: string,
-    public readonly status?: number,
-    public readonly violations?: Violation[],
-  ) {
+  readonly kind: ApiErrorKind;
+  readonly status?: number;
+  readonly violations?: Violation[];
+
+  constructor(kind: ApiErrorKind, message: string, status?: number, violations?: Violation[]) {
     super(message);
     this.name = 'ApiError';
+    this.kind = kind;
+    this.status = status;
+    this.violations = violations;
   }
 }
 

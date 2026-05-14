@@ -56,6 +56,7 @@ final class ProviderAControllerTest extends WebTestCase
         ]);
 
         self::assertResponseIsSuccessful();
+        /** @var array{price: string} $body */
         $body = json_decode((string) $this->client->getResponse()->getContent(), true, flags: \JSON_THROW_ON_ERROR);
         self::assertSame('365 EUR', $body['price']);
     }
@@ -71,6 +72,7 @@ final class ProviderAControllerTest extends WebTestCase
         ]);
 
         self::assertResponseStatusCodeSame(Response::HTTP_INTERNAL_SERVER_ERROR);
+        /** @var array{error: string} $body */
         $body = json_decode((string) $this->client->getResponse()->getContent(), true, flags: \JSON_THROW_ON_ERROR);
         self::assertSame('provider_a_unavailable', $body['error']);
     }

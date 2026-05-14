@@ -17,6 +17,24 @@ use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\HttpFoundation\Response;
 
+/**
+ * @phpstan-type MoneyShape           array{amount: float, currency: string}
+ * @phpstan-type QuoteShape           array{
+ *     provider: string,
+ *     price: MoneyShape,
+ *     discounted_price: MoneyShape|null,
+ *     is_cheapest: bool
+ * }
+ * @phpstan-type CampaignShape        array{active: bool, percentage: float}
+ * @phpstan-type MetaShape            array{duration_ms: int, failed_providers: list<string>}
+ * @phpstan-type CalculateResponseShape array{
+ *     campaign: CampaignShape,
+ *     quotes: list<QuoteShape>,
+ *     meta: MetaShape
+ * }
+ * @phpstan-type ViolationShape       array{field: string, message: string}
+ * @phpstan-type ProblemDetailsShape  array{error: string, violations: list<ViolationShape>}
+ */
 final class CalculateControllerTest extends WebTestCase
 {
     private KernelBrowser $client;
@@ -47,14 +65,14 @@ final class CalculateControllerTest extends WebTestCase
         ]);
 
         self::assertResponseIsSuccessful();
-        $body = $this->responseJson();
+        $body = $this->calculateResponse();
 
         self::assertTrue($body['campaign']['active']);
         self::assertSame(5.0, $body['campaign']['percentage']);
 
         self::assertSame(
             ['provider-c', 'provider-b', 'provider-a'],
-            array_map(static fn(array $q): string => $q['provider'], $body['quotes']),
+            array_map(static fn (array $q): string => $q['provider'], $body['quotes']),
         );
 
         self::assertTrue($body['quotes'][0]['is_cheapest']);
@@ -62,6 +80,7 @@ final class CalculateControllerTest extends WebTestCase
         self::assertFalse($body['quotes'][2]['is_cheapest']);
 
         self::assertSame(210.0, $body['quotes'][0]['price']['amount']);
+        self::assertNotNull($body['quotes'][0]['discounted_price']);
         self::assertSame(199.5, $body['quotes'][0]['discounted_price']['amount']);
         self::assertSame('EUR', $body['quotes'][0]['price']['currency']);
 
@@ -87,7 +106,7 @@ final class CalculateControllerTest extends WebTestCase
         ]);
 
         self::assertResponseIsSuccessful();
-        $body = $this->responseJson();
+        $body = $this->calculateResponse();
 
         self::assertFalse($body['campaign']['active']);
         foreach ($body['quotes'] as $quote) {
@@ -110,7 +129,7 @@ final class CalculateControllerTest extends WebTestCase
         ]);
 
         self::assertResponseIsSuccessful();
-        $body = $this->responseJson();
+        $body = $this->calculateResponse();
 
         self::assertCount(1, $body['quotes']);
         self::assertSame('provider-b', $body['quotes'][0]['provider']);
@@ -134,7 +153,7 @@ final class CalculateControllerTest extends WebTestCase
         ]);
 
         self::assertResponseIsSuccessful();
-        $body = $this->responseJson();
+        $body = $this->calculateResponse();
 
         self::assertSame([], $body['quotes']);
         $failed = $body['meta']['failed_providers'];
@@ -153,7 +172,7 @@ final class CalculateControllerTest extends WebTestCase
         ]);
 
         self::assertResponseStatusCodeSame(Response::HTTP_BAD_REQUEST);
-        $body = $this->responseJson();
+        $body = $this->problemDetailsResponse();
         self::assertSame('validation_failed', $body['error']);
         self::assertNotEmpty($body['violations']);
     }
@@ -170,7 +189,7 @@ final class CalculateControllerTest extends WebTestCase
         ]);
 
         self::assertResponseStatusCodeSame(Response::HTTP_BAD_REQUEST);
-        $body = $this->responseJson();
+        $body = $this->problemDetailsResponse();
         self::assertSame('validation_failed', $body['error']);
         self::assertSame('driver_birthday', $body['violations'][0]['field']);
     }
@@ -187,7 +206,7 @@ final class CalculateControllerTest extends WebTestCase
         ]);
 
         self::assertResponseStatusCodeSame(Response::HTTP_BAD_REQUEST);
-        $body = $this->responseJson();
+        $body = $this->problemDetailsResponse();
         self::assertSame('validation_failed', $body['error']);
         self::assertStringContainsString('18', $body['violations'][0]['message']);
     }
@@ -221,7 +240,7 @@ final class CalculateControllerTest extends WebTestCase
         ]);
 
         self::assertResponseIsSuccessful();
-        $body = $this->responseJson();
+        $body = $this->calculateResponse();
         self::assertCount(1, $body['quotes']);
     }
 
@@ -236,17 +255,28 @@ final class CalculateControllerTest extends WebTestCase
     }
 
     /**
-     * @return array<string, mixed>
+     * @return CalculateResponseShape
      */
-    private function responseJson(): array
+    private function calculateResponse(): array
     {
-        /** @var array<string, mixed> $body */
-        $body = json_decode(
+        /** @var CalculateResponseShape */
+        return json_decode(
             (string) $this->client->getResponse()->getContent(),
             true,
             flags: \JSON_THROW_ON_ERROR,
         );
+    }
 
-        return $body;
+    /**
+     * @return ProblemDetailsShape
+     */
+    private function problemDetailsResponse(): array
+    {
+        /** @var ProblemDetailsShape */
+        return json_decode(
+            (string) $this->client->getResponse()->getContent(),
+            true,
+            flags: \JSON_THROW_ON_ERROR,
+        );
     }
 }

@@ -43,10 +43,15 @@ final readonly class ParallelQuoteFetcher implements QuoteFetcher
 
     public function fetchAll(DriverAge $age, CarType $type, CarUse $use): FetchResult
     {
+        /** @var \SplObjectStorage<ResponseInterface, QuoteProvider> $providersByResponse */
         $providersByResponse = new \SplObjectStorage();
+        /** @var list<ResponseInterface> $responses */
         $responses = [];
-        $startedAt = [];            // providerId => float microtime
-        $outcomes = [];             // providerId => ProviderOutcome
+        /** @var array<string, float> $startedAt providerId => microtime */
+        $startedAt = [];
+        /** @var array<string, ProviderOutcome> $outcomes */
+        $outcomes = [];
+        /** @var list<string> $failedProviderIds */
         $failedProviderIds = [];
 
         foreach ($this->providers as $provider) {
