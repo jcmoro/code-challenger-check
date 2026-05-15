@@ -7,6 +7,7 @@ namespace App\UI\Http\Controller;
 use App\Domain\Car\CarForm;
 use App\Domain\Car\CarUse;
 use App\Domain\Driver\DriverAge;
+use App\Infrastructure\Provider\C\ProviderCCsvCodec;
 use App\Infrastructure\Provider\C\ProviderCSimulator;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\Request;
@@ -31,11 +32,12 @@ final readonly class ProviderCController
 
     public function __construct(
         private ProviderCSimulator $simulator,
+        private ProviderCCsvCodec $csv,
     ) {}
 
     public function __invoke(Request $request): Response
     {
-        $data = $this->parseCsv($request->getContent());
+        $data = $this->csv->decodeRow($request->getContent());
         if (null === $data) {
             return $this->error('invalid_csv', Response::HTTP_BAD_REQUEST);
         }
@@ -58,33 +60,18 @@ final readonly class ProviderCController
         }
 
         return new Response(
-            "price,currency\n{$price},EUR\n",
+            $this->csv->encodeRow(['price' => $price, 'currency' => 'EUR']),
             Response::HTTP_OK,
             ['Content-Type' => self::CONTENT_TYPE],
         );
     }
 
-    /**
-     * @return array<string, string>|null
-     */
-    private function parseCsv(string $body): ?array
-    {
-        $lines = array_values(array_filter(array_map('trim', explode("\n", trim($body))), static fn(string $l): bool => '' !== $l));
-        if (2 !== \count($lines)) {
-            return null;
-        }
-
-        $headers = array_map(static fn(?string $v): string => (string) $v, str_getcsv($lines[0], escape: '\\'));
-        $values = array_map(static fn(?string $v): string => (string) $v, str_getcsv($lines[1], escape: '\\'));
-        if (\count($headers) !== \count($values)) {
-            return null;
-        }
-
-        return array_combine($headers, $values);
-    }
-
     private function error(string $code, int $status): Response
     {
-        return new Response("error\n{$code}\n", $status, ['Content-Type' => self::CONTENT_TYPE]);
+        return new Response(
+            $this->csv->encodeRow(['error' => $code]),
+            $status,
+            ['Content-Type' => self::CONTENT_TYPE],
+        );
     }
 }

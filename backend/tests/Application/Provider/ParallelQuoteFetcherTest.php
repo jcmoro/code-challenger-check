@@ -14,10 +14,12 @@ use App\Domain\Quote\Quote;
 use App\Infrastructure\Provider\A\ProviderAClient;
 use App\Infrastructure\Provider\B\ProviderBClient;
 use App\Infrastructure\Provider\C\ProviderCClient;
+use App\Infrastructure\Provider\C\ProviderCCsvCodec;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
 use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpClient\Response\MockResponse;
+use Symfony\Component\Serializer\Encoder\XmlEncoder;
 use Symfony\Contracts\HttpClient\ResponseInterface;
 
 final class ParallelQuoteFetcherTest extends TestCase
@@ -166,7 +168,7 @@ final class ParallelQuoteFetcherTest extends TestCase
 
         $providers = [
             new ProviderAClient($client, 'http://nginx/provider-a'),
-            new ProviderBClient($client, 'http://nginx/provider-b'),
+            new ProviderBClient($client, new XmlEncoder(), 'http://nginx/provider-b'),
             $this->throwingProviderNamed('provider-z'),
         ];
 
@@ -186,8 +188,8 @@ final class ParallelQuoteFetcherTest extends TestCase
     {
         return [
             new ProviderAClient($client, 'http://nginx/provider-a'),
-            new ProviderBClient($client, 'http://nginx/provider-b'),
-            new ProviderCClient($client, 'http://nginx/provider-c'),
+            new ProviderBClient($client, new XmlEncoder(), 'http://nginx/provider-b'),
+            new ProviderCClient($client, new ProviderCCsvCodec(), 'http://nginx/provider-c'),
         ];
     }
 

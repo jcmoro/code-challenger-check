@@ -19,6 +19,7 @@ final readonly class ProviderCClient implements QuoteProvider
 
     public function __construct(
         private HttpClientInterface $httpClient,
+        private ProviderCCsvCodec $csv,
         private string $baseUrl,
     ) {}
 
@@ -29,12 +30,11 @@ final readonly class ProviderCClient implements QuoteProvider
 
     public function startRequest(DriverAge $age, CarType $type, CarUse $use): ResponseInterface
     {
-        $body = \sprintf(
-            "driver_age,car_form,car_use\n%d,%s,%s\n",
-            $age->value,
-            $type->toCarForm()->value,
-            $use->value,
-        );
+        $body = $this->csv->encodeRow([
+            'driver_age' => $age->value,
+            'car_form' => $type->toCarForm()->value,
+            'car_use' => $use->value,
+        ]);
 
         return $this->httpClient->request('POST', $this->baseUrl . '/quote', [
             'headers' => ['Content-Type' => 'text/csv'],
@@ -45,30 +45,11 @@ final readonly class ProviderCClient implements QuoteProvider
 
     public function parseResponse(ResponseInterface $response): ?Quote
     {
-        $body = trim($response->getContent(false));
-        $lines = array_values(array_filter(
-            array_map('trim', explode("\n", $body)),
-            static fn(string $l): bool => '' !== $l,
-        ));
-
-        if (2 !== \count($lines)) {
+        $row = $this->csv->decodeRow($response->getContent(false));
+        if (null === $row) {
             return null;
         }
 
-        $headers = array_map(
-            static fn(?string $v): string => (string) $v,
-            str_getcsv($lines[0], escape: '\\'),
-        );
-        $values = array_map(
-            static fn(?string $v): string => (string) $v,
-            str_getcsv($lines[1], escape: '\\'),
-        );
-
-        if (\count($headers) !== \count($values)) {
-            return null;
-        }
-
-        $row = array_combine($headers, $values);
         $amount = isset($row['price']) ? (float) $row['price'] : -1.0;
         $currency = $row['currency'] ?? '';
 

@@ -10,6 +10,7 @@ use App\Domain\Car\CarUse;
 use App\Domain\Driver\DriverAge;
 use App\Domain\Money\Money;
 use App\Domain\Quote\Quote;
+use Symfony\Contracts\HttpClient\Exception\ExceptionInterface as HttpClientExceptionInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Symfony\Contracts\HttpClient\ResponseInterface;
 
@@ -42,8 +43,10 @@ final readonly class ProviderAClient implements QuoteProvider
     public function parseResponse(ResponseInterface $response): ?Quote
     {
         try {
+            // toArray() throws on transport / decode / non-JSON; all roll up
+            // to "unparseable provider response" → null.
             $body = $response->toArray(false);
-        } catch (\Throwable) {
+        } catch (HttpClientExceptionInterface|\JsonException) {
             return null;
         }
 

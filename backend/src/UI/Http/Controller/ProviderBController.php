@@ -13,6 +13,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Serializer\Encoder\XmlEncoder;
+use Symfony\Component\Serializer\Exception\NotEncodableValueException;
 
 #[Route('/provider-b/quote', methods: ['POST'])]
 #[OA\Tag(name: 'providers')]
@@ -35,6 +36,8 @@ final readonly class ProviderBController
 {
     public const string CONTENT_TYPE_XML = 'application/xml';
 
+    private const string RESPONSE_ROOT = 'RespuestaCotizacion';
+
     public function __construct(
         private ProviderBSimulator $simulator,
         private XmlEncoder $xml,
@@ -50,7 +53,7 @@ final readonly class ProviderBController
         try {
             /** @var array<string, scalar> $decoded */
             $decoded = $this->xml->decode($body, XmlEncoder::FORMAT);
-        } catch (\Throwable) {
+        } catch (NotEncodableValueException) {
             return $this->errorResponse('invalid_xml', Response::HTTP_BAD_REQUEST);
         }
 
@@ -70,26 +73,27 @@ final readonly class ProviderBController
 
         $price = $this->simulator->quote($driverAge, $tipo, $uso->toCarUse());
 
-        $xml = $this->xml->encode(
-            [
-                'Precio' => \sprintf('%d.0', $price),
-                'Moneda' => 'EUR',
-            ],
-            XmlEncoder::FORMAT,
-            [XmlEncoder::ROOT_NODE_NAME => 'RespuestaCotizacion'],
+        return new Response(
+            $this->encodeResponse(['Precio' => \sprintf('%d.0', $price), 'Moneda' => 'EUR']),
+            Response::HTTP_OK,
+            ['Content-Type' => self::CONTENT_TYPE_XML],
         );
-
-        return new Response($xml, Response::HTTP_OK, ['Content-Type' => self::CONTENT_TYPE_XML]);
     }
 
     private function errorResponse(string $code, int $status): Response
     {
-        $xml = $this->xml->encode(
-            ['Error' => $code],
-            XmlEncoder::FORMAT,
-            [XmlEncoder::ROOT_NODE_NAME => 'RespuestaCotizacion'],
+        return new Response(
+            $this->encodeResponse(['Error' => $code]),
+            $status,
+            ['Content-Type' => self::CONTENT_TYPE_XML],
         );
+    }
 
-        return new Response($xml, $status, ['Content-Type' => self::CONTENT_TYPE_XML]);
+    /**
+     * @param array<string, scalar> $data
+     */
+    private function encodeResponse(array $data): string
+    {
+        return $this->xml->encode($data, XmlEncoder::FORMAT, [XmlEncoder::ROOT_NODE_NAME => self::RESPONSE_ROOT]);
     }
 }

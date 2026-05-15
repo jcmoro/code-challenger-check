@@ -10,6 +10,8 @@ use App\Domain\Car\CarUse;
 use App\Domain\Driver\DriverAge;
 use App\Domain\Money\Money;
 use App\Domain\Quote\Quote;
+use Symfony\Component\Serializer\Encoder\XmlEncoder;
+use Symfony\Component\Serializer\Exception\NotEncodableValueException;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Symfony\Contracts\HttpClient\ResponseInterface;
 
@@ -19,6 +21,7 @@ final readonly class ProviderBClient implements QuoteProvider
 
     public function __construct(
         private HttpClientInterface $httpClient,
+        private XmlEncoder $xml,
         private string $baseUrl,
     ) {}
 
@@ -29,11 +32,14 @@ final readonly class ProviderBClient implements QuoteProvider
 
     public function startRequest(DriverAge $age, CarType $type, CarUse $use): ResponseInterface
     {
-        $body = \sprintf(
-            '<SolicitudCotizacion><EdadConductor>%d</EdadConductor><TipoCoche>%s</TipoCoche><UsoCoche>%s</UsoCoche></SolicitudCotizacion>',
-            $age->value,
-            $type->toTipoCoche()->value,
-            CarUse::Private === $use ? 'privado' : 'comercial',
+        $body = $this->xml->encode(
+            [
+                'EdadConductor' => $age->value,
+                'TipoCoche' => $type->toTipoCoche()->value,
+                'UsoCoche' => CarUse::Private === $use ? 'privado' : 'comercial',
+            ],
+            XmlEncoder::FORMAT,
+            [XmlEncoder::ROOT_NODE_NAME => 'SolicitudCotizacion'],
         );
 
         return $this->httpClient->request('POST', $this->baseUrl . '/quote', [
@@ -45,22 +51,20 @@ final readonly class ProviderBClient implements QuoteProvider
 
     public function parseResponse(ResponseInterface $response): ?Quote
     {
-        $previous = libxml_use_internal_errors(true);
         try {
-            $xml = simplexml_load_string($response->getContent(false));
-        } catch (\Throwable) {
-            return null;
-        } finally {
-            libxml_clear_errors();
-            libxml_use_internal_errors($previous);
-        }
-
-        if (false === $xml || !isset($xml->Precio, $xml->Moneda)) {
+            /** @var array<string, scalar> $decoded */
+            $decoded = $this->xml->decode($response->getContent(false), XmlEncoder::FORMAT);
+        } catch (NotEncodableValueException) {
             return null;
         }
 
-        $amount = (float) (string) $xml->Precio;
-        $currency = (string) $xml->Moneda;
+        if (!isset($decoded['Precio'], $decoded['Moneda'])) {
+            return null;
+        }
+
+        $amount = (float) $decoded['Precio'];
+        $currency = (string) $decoded['Moneda'];
+
         if ($amount < 0 || '' === $currency) {
             return null;
         }
