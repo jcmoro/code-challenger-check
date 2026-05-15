@@ -227,7 +227,7 @@ Six markdown documents in [`docs/plan/`](./docs/plan/) capture the
 3. [`specification.md`](docs/plan/specification.md) — detailed contracts: API request/response shapes, vocabulary mapping table (user-facing ↔ each provider), error semantics, frontend component structure.
 4. [`implementation.md`](docs/plan/implementation.md) — eight phased build plan with exit criteria, technology choices (locked), repo layout, Makefile sketch, and effort estimate.
 5. [`validation.md`](docs/plan/validation.md) — five-layer validation strategy (tooling → unit → integration → end-to-end → reviewer walk-through), exhaustive pricing test tables, binary acceptance criteria.
-6. [`replanning.md`](docs/plan/replanning.md) — the change log: 30 entries documenting every decision that drifted from the original plan, with trigger / change / impact / cost / risk for each.
+6. [`replanning.md`](docs/plan/replanning.md) — the change log: 32 entries documenting every decision that drifted from the original plan, with trigger / change / impact / cost / risk for each.
 
 ---
 

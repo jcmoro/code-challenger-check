@@ -129,12 +129,12 @@ final readonly class ParallelQuoteFetcher implements QuoteFetcher
                 return;
             }
 
-            if ($chunk->isLast() && !isset($session->resolved[$providerId])) {
+            if ($chunk->isLast() && !\array_key_exists($providerId, $session->resolved)) {
                 $entry = $this->finalize($provider, $response);
                 $session->resolved[$providerId] = $entry;
                 $session->outcomes[$providerId] = $this->outcome(
                     $providerId,
-                    true === $entry ? ProviderOutcome::FAILED : ProviderOutcome::OK,
+                    null === $entry ? ProviderOutcome::FAILED : ProviderOutcome::OK,
                     $session->startedAt[$providerId],
                 );
             }
@@ -187,14 +187,22 @@ final readonly class ParallelQuoteFetcher implements QuoteFetcher
         foreach ($session->providersByResponse as $response) {
             $provider = $session->providersByResponse[$response];
             $providerId = $provider->id();
-            $entry = $session->resolved[$providerId] ?? true;
-            if (true === $entry) {
+
+            if (!\array_key_exists($providerId, $session->resolved)) {
+                // Started but never resolved — defensive fallback (should not
+                // happen with HttpClient::stream(), which always emits isLast).
                 $session->failedProviderIds[] = $providerId;
-                if (!isset($session->outcomes[$providerId])) {
-                    $session->outcomes[$providerId] = $this->outcome($providerId, ProviderOutcome::TIMEOUT, $session->startedAt[$providerId]);
-                }
+                $session->outcomes[$providerId] ??= $this->outcome($providerId, ProviderOutcome::TIMEOUT, $session->startedAt[$providerId]);
                 continue;
             }
+
+            $entry = $session->resolved[$providerId];
+            if (null === $entry) {
+                // Resolved as failed (outcome already set by markResolvedFailure or handleChunk).
+                $session->failedProviderIds[] = $providerId;
+                continue;
+            }
+
             $quotes[] = $entry;
         }
 
@@ -207,14 +215,14 @@ final readonly class ParallelQuoteFetcher implements QuoteFetcher
 
     private function markResolvedFailure(FetchSession $session, string $providerId, string $kind): void
     {
-        $session->resolved[$providerId] = true;
+        $session->resolved[$providerId] = null;
         $session->outcomes[$providerId] = $this->outcome($providerId, $kind, $session->startedAt[$providerId]);
     }
 
     /**
-     * @return Quote|true `true` means the response was unusable
+     * @return Quote|null null means the response was unusable (non-2xx or unparseable)
      */
-    private function finalize(QuoteProvider $provider, ResponseInterface $response): Quote|bool
+    private function finalize(QuoteProvider $provider, ResponseInterface $response): ?Quote
     {
         $statusCode = $response->getStatusCode();
         if ($statusCode < 200 || $statusCode >= 300) {
@@ -224,7 +232,7 @@ final readonly class ParallelQuoteFetcher implements QuoteFetcher
             ]);
             $response->cancel();
 
-            return true;
+            return null;
         }
 
         $quote = $provider->parseResponse($response);
@@ -234,7 +242,7 @@ final readonly class ParallelQuoteFetcher implements QuoteFetcher
             ]);
             $response->cancel();
 
-            return true;
+            return null;
         }
 
         return $quote;
@@ -275,10 +283,15 @@ final class FetchSession
     public array $failedProviderIds = [];
 
     /**
-     * Keyed by provider id; `true` means the response was rejected
-     * (timeout / non-2xx / parse error). Otherwise contains the Quote.
+     * Keyed by provider id. Three states:
+     * - key absent              → not yet resolved (will become TIMEOUT in
+     *                             buildFetchResult if the stream loop never
+     *                             emits isLast for it)
+     * - value `null`            → resolved as failed (timeout / non-2xx /
+     *                             parse error / transport failure)
+     * - value `Quote` instance  → resolved successfully
      *
-     * @var array<string, Quote|true>
+     * @var array<string, Quote|null>
      */
     public array $resolved = [];
 
