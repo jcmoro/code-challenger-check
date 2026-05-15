@@ -13,7 +13,7 @@ export function useSort(quotes: Ref<readonly Quote[]>, initial: SortDirection = 
       const bPrice = b.discounted_price?.amount ?? b.price.amount;
       const cmp = aPrice - bPrice;
       const tieBreak = a.provider.localeCompare(b.provider);
-      const ordered = cmp !== 0 ? cmp : tieBreak;
+      const ordered = cmp === 0 ? tieBreak : cmp;
       return direction.value === 'asc' ? ordered : -ordered;
     });
     return list;

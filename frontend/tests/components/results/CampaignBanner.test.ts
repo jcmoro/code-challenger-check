@@ -15,8 +15,8 @@ describe('CampaignBanner', () => {
     expect(wrapper.text()).not.toContain('5%');
   });
 
-  it('uses role="status" so screen readers pick it up politely', () => {
+  it('renders as <output> so screen readers announce updates politely (implicit role=status)', () => {
     const wrapper = mount(CampaignBanner, { props: { percentage: 5 } });
-    expect(wrapper.attributes('role')).toBe('status');
+    expect(wrapper.element.tagName).toBe('OUTPUT');
   });
 });

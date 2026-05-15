@@ -21,7 +21,7 @@ use Symfony\Component\Serializer\Encoder\XmlEncoder;
 #[OA\RequestBody(
     description: 'Spanish XML quote request.',
     content: new OA\MediaType(
-        mediaType: 'application/xml',
+        mediaType: ProviderBController::CONTENT_TYPE_XML,
         example: '<SolicitudCotizacion><EdadConductor>30</EdadConductor><TipoCoche>turismo</TipoCoche><UsoCoche>privado</UsoCoche></SolicitudCotizacion>',
     ),
 )]
@@ -29,12 +29,14 @@ use Symfony\Component\Serializer\Encoder\XmlEncoder;
     response: 200,
     description: 'Quote response in Spanish XML.',
     content: new OA\MediaType(
-        mediaType: 'application/xml',
+        mediaType: ProviderBController::CONTENT_TYPE_XML,
         example: '<RespuestaCotizacion><Precio>300.0</Precio><Moneda>EUR</Moneda></RespuestaCotizacion>',
     ),
 )]
 final readonly class ProviderBController
 {
+    public const string CONTENT_TYPE_XML = 'application/xml';
+
     private const int LATENCY_SECONDS = 5;
     private const int EXTRA_LATENCY_SECONDS = 55;
     private const int EXTRA_LATENCY_PERCENT = 1;
@@ -91,7 +93,7 @@ final readonly class ProviderBController
             [XmlEncoder::ROOT_NODE_NAME => 'RespuestaCotizacion'],
         );
 
-        return new Response($xml, Response::HTTP_OK, ['Content-Type' => 'application/xml']);
+        return new Response($xml, Response::HTTP_OK, ['Content-Type' => self::CONTENT_TYPE_XML]);
     }
 
     private function errorResponse(string $code, int $status): Response
@@ -102,6 +104,6 @@ final readonly class ProviderBController
             [XmlEncoder::ROOT_NODE_NAME => 'RespuestaCotizacion'],
         );
 
-        return new Response($xml, $status, ['Content-Type' => 'application/xml']);
+        return new Response($xml, $status, ['Content-Type' => self::CONTENT_TYPE_XML]);
     }
 }

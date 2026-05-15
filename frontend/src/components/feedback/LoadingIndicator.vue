@@ -3,5 +3,5 @@ import { es } from '@/i18n/es';
 </script>
 
 <template>
-  <p class="loading" role="status" aria-live="polite">{{ es.form.submitting }}</p>
+  <output class="loading" aria-live="polite">{{ es.form.submitting }}</output>
 </template>

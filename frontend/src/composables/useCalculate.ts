@@ -25,10 +25,12 @@ export function useCalculate(options: UseCalculateOptions = {}) {
       data.value = await postCalculate(payload, options.client);
     } catch (cause) {
       data.value = null;
-      error.value =
-        cause instanceof ApiError
-          ? cause
-          : new ApiError('unknown', cause instanceof Error ? cause.message : String(cause));
+      if (cause instanceof ApiError) {
+        error.value = cause;
+      } else {
+        const message = cause instanceof Error ? cause.message : String(cause);
+        error.value = new ApiError('unknown', message);
+      }
     } finally {
       loading.value = false;
     }

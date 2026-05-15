@@ -25,9 +25,12 @@ export type FormStateApi = ReturnType<typeof useFormState>;
 
 export const FORM_STATE_KEY: InjectionKey<FormStateApi> = Symbol('formState');
 
+function defaultStorage(): Storage | undefined {
+  return globalThis.sessionStorage ?? undefined;
+}
+
 export function useFormState(options: UseFormStateOptions = {}) {
-  const storage =
-    options.storage ?? (typeof window !== 'undefined' ? window.sessionStorage : undefined);
+  const storage = options.storage ?? defaultStorage();
 
   const form = reactive<FormState>(hydrate(storage));
 
@@ -74,8 +77,8 @@ function hydrate(storage: Storage | undefined): FormState {
     const parsed = JSON.parse(raw) as Partial<FormState>;
     return {
       driver_birthday: typeof parsed.driver_birthday === 'string' ? parsed.driver_birthday : '',
-      car_type: (parsed.car_type as CarType | '' | undefined) ?? '',
-      car_use: (parsed.car_use as CarUse | '' | undefined) ?? '',
+      car_type: parsed.car_type ?? '',
+      car_use: parsed.car_use ?? '',
     };
   } catch {
     return emptyForm();

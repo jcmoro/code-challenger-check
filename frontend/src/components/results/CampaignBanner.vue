@@ -8,7 +8,7 @@ defineProps<Props>();
 </script>
 
 <template>
-  <aside class="campaign-banner" role="status">
+  <output class="campaign-banner">
     <strong>{{ es.results.campaignBanner.replace('5%', `${percentage}%`) }}</strong>
-  </aside>
+  </output>
 </template>

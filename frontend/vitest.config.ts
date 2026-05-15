@@ -15,7 +15,7 @@ export default defineConfig({
     include: ['src/**/*.{test,spec}.ts', 'tests/**/*.{test,spec}.ts'],
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'html'],
+      reporter: ['text', 'html', 'lcov'],
       include: ['src/**/*.{ts,vue}'],
       exclude: ['src/main.ts', 'src/**/*.d.ts'],
     },

@@ -30,16 +30,16 @@ const label = computed(() =>
 
 const continueText = computed(() => props.continueLabel || es.wizard.continue);
 
-function goBack(): void {
+async function goBack(): Promise<void> {
   if (props.backTo) {
-    void router.push({ name: props.backTo });
+    await router.push({ name: props.backTo });
   }
 }
 
-function goContinue(): void {
+async function goContinue(): Promise<void> {
   if (!props.canContinue) return;
   if (props.continueTo) {
-    void router.push({ name: props.continueTo });
+    await router.push({ name: props.continueTo });
   } else {
     emit('continue');
   }
