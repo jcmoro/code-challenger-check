@@ -32,4 +32,7 @@ Thumbs.db
 # Docker
 docker-compose.local.yml
 
+# SonarCloud scanner
+.scannerwork/
+
 .temp

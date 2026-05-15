@@ -139,6 +139,30 @@ test-frontend:
 
 
 # ====================================================================
+##@ Coverage & SonarCloud
+# ====================================================================
+
+## coverage: Generate PHPUnit (Clover) + Vitest (LCOV) coverage reports
+coverage: coverage-backend coverage-frontend
+
+## coverage-backend: PHPUnit with pcov → backend/var/coverage/clover.xml
+coverage-backend:
+	$(BACKEND_RUN) sh -c "mkdir -p var/coverage && vendor/bin/phpunit --coverage-clover=var/coverage/clover.xml"
+	@# clover.xml carries container-side paths (/app/...); rewrite to repo-relative
+	@# so the SonarCloud scanner (which sees the host fs) can resolve them.
+	@sed -i.bak 's|/app/|backend/|g' backend/var/coverage/clover.xml && rm backend/var/coverage/clover.xml.bak
+
+## coverage-frontend: Vitest with v8 → frontend/coverage/lcov.info
+coverage-frontend:
+	$(FRONTEND_RUN) npm run test -- --run --coverage
+
+## sonar: Upload analysis to SonarCloud (requires SONAR_TOKEN in env)
+sonar:
+	@if [ -z "$$SONAR_TOKEN" ]; then echo "SONAR_TOKEN not set. Generate one at https://sonarcloud.io/account/security and export it."; exit 1; fi
+	docker run --rm -e SONAR_TOKEN -v "$(CURDIR):/usr/src" sonarsource/sonar-scanner-cli
+
+
+# ====================================================================
 ##@ Quality (lint + static analysis, all in check mode)
 # ====================================================================
 
@@ -204,6 +228,7 @@ clean:
         up up-d down logs ps \
         shell-backend shell-frontend \
         test test-backend test-frontend \
+        coverage coverage-backend coverage-frontend sonar \
         lint stan cs eslint prettier typecheck \
         fix fix-backend fix-frontend \
         clean

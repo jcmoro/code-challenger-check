@@ -16,8 +16,10 @@ RUN apk add --no-cache \
         intl \
         opcache \
         zip \
+    && pecl install pcov \
+    && docker-php-ext-enable pcov \
     && apk del autoconf g++ make \
-    && rm -rf /var/cache/apk/*
+    && rm -rf /var/cache/apk/* /tmp/pear
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 COPY php.ini /usr/local/etc/php/conf.d/zz-app.ini
