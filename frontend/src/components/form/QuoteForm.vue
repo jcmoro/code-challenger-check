@@ -4,6 +4,7 @@ import BirthdayField from './BirthdayField.vue';
 import CarTypeField from './CarTypeField.vue';
 import CarUseField from './CarUseField.vue';
 import { useFormState } from '@/composables/useFormState';
+import { validateBirthday } from '@/domain/birthdayValidation';
 import type { CalculateRequest } from '@/domain/types';
 import { es } from '@/i18n/es';
 
@@ -27,30 +28,6 @@ const errors = reactive<FieldErrors>({
   car_type: null,
   car_use: null,
 });
-
-function validateBirthday(value: string): string | null {
-  if (!value) return 'Introduce tu fecha de nacimiento.';
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return 'Fecha no válida.';
-
-  const today = new Date();
-  if (parsed > today) return 'La fecha no puede ser futura.';
-
-  const age = ageInYears(parsed, today);
-  if (age < 18) return 'El conductor debe tener al menos 18 años.';
-  if (age > 120) return 'Introduce una fecha de nacimiento realista.';
-  return null;
-}
-
-function ageInYears(birthday: Date, today: Date): number {
-  let years = today.getFullYear() - birthday.getFullYear();
-  const monthDelta = today.getMonth() - birthday.getMonth();
-  const dayDelta = today.getDate() - birthday.getDate();
-  if (monthDelta < 0 || (monthDelta === 0 && dayDelta < 0)) {
-    years -= 1;
-  }
-  return years;
-}
 
 function validateCarType(value: string): string | null {
   return value ? null : 'Selecciona un tipo de coche.';

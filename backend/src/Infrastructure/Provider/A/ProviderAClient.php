@@ -10,7 +10,6 @@ use App\Domain\Car\CarUse;
 use App\Domain\Driver\DriverAge;
 use App\Domain\Money\Money;
 use App\Domain\Quote\Quote;
-use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Symfony\Contracts\HttpClient\ResponseInterface;
 
@@ -20,7 +19,6 @@ final readonly class ProviderAClient implements QuoteProvider
 
     public function __construct(
         private HttpClientInterface $httpClient,
-        #[Autowire('%env(PROVIDER_A_BASE_URL)%')]
         private string $baseUrl,
     ) {}
 

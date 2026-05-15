@@ -9,7 +9,6 @@ use App\Application\Calculate\CalculateQuoteHandler;
 use App\Application\Calculate\CalculateQuoteResult;
 use App\Domain\Money\Money;
 use App\Domain\Quote\Quote;
-use App\Infrastructure\System\Clock;
 use App\UI\Http\Dto\CalculateQuoteHttpRequest;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -56,35 +55,22 @@ final readonly class CalculateController
 {
     public function __construct(
         private CalculateQuoteHandler $handler,
-        private Clock $clock,
     ) {}
 
     public function __invoke(#[MapRequestPayload] CalculateQuoteHttpRequest $request): JsonResponse
     {
-        $birthday = new \DateTimeImmutable($request->driver_birthday);
-        $today = $this->clock->now();
-
-        if ($birthday > $today) {
-            return $this->validationError('driver_birthday', 'must be a date in the past');
-        }
-
-        // We compute the age here so an under-18 driver is rejected at the boundary,
-        // not by a provider returning a 4xx.
         try {
-            $age = \App\Domain\Driver\DriverAge::fromBirthday($birthday, $today);
+            $result = $this->handler->handle(new CalculateQuoteCommand(
+                driverBirthday: new \DateTimeImmutable($request->driver_birthday),
+                carType: $request->toCarType(),
+                carUse: $request->toCarUse(),
+            ));
         } catch (\DomainException $e) {
+            // The handler/domain enforce birthday validity (future date, age
+            // out of range, under-{@see DriverAge::MIN_INSURABLE_AGE}). All
+            // surface here as a single 400 with the same structured envelope.
             return $this->validationError('driver_birthday', $e->getMessage());
         }
-
-        if ($age->value < 18) {
-            return $this->validationError('driver_birthday', 'driver must be at least 18 years old');
-        }
-
-        $result = $this->handler->handle(new CalculateQuoteCommand(
-            driverBirthday: $birthday,
-            carType: $request->toCarType(),
-            carUse: $request->toCarUse(),
-        ));
 
         $response = new JsonResponse();
         $response->setEncodingOptions($response->getEncodingOptions() | \JSON_PRESERVE_ZERO_FRACTION);

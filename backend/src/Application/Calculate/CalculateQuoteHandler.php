@@ -10,18 +10,17 @@ use App\Application\Provider\QuoteFetcher;
 use App\Domain\Driver\DriverAge;
 use App\Domain\Quote\Quote;
 use App\Infrastructure\System\Clock;
+use Monolog\Attribute\WithMonologChannel;
 use Psr\Log\LoggerInterface;
-use Psr\Log\NullLogger;
-use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
+#[WithMonologChannel('calculate')]
 final readonly class CalculateQuoteHandler
 {
     public function __construct(
         private QuoteFetcher $fetcher,
         private CampaignProvider $campaignProvider,
         private Clock $clock,
-        #[Autowire(service: 'monolog.logger.calculate')]
-        private LoggerInterface $logger = new NullLogger(),
+        private LoggerInterface $logger,
     ) {}
 
     public function handle(CalculateQuoteCommand $command): CalculateQuoteResult
@@ -30,6 +29,7 @@ final readonly class CalculateQuoteHandler
         $requestId = bin2hex(random_bytes(8));
 
         $age = DriverAge::fromBirthday($command->driverBirthday, $this->clock->now());
+        $age->assertInsurable();
         $campaign = $this->campaignProvider->state();
 
         $fetch = $this->fetcher->fetchAll($age, $command->carType, $command->carUse);

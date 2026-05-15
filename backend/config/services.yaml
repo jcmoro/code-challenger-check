@@ -5,13 +5,23 @@ services:
         autowire: true
         autoconfigure: true
 
+    # Auto-tag every implementation of QuoteProvider so the parallel fetcher
+    # can pick them up via !tagged_iterator below. Keeps the QuoteProvider
+    # interface free of Symfony imports.
+    _instanceof:
+        App\Application\Provider\QuoteProvider:
+            tags: ['app.quote_provider']
+
     App\:
         resource: '../src/'
         exclude:
             - '../src/Kernel.php'
 
-    # Bind system-service interfaces to their default implementations.
-    # Aliases are public so tests can swap them via static::getContainer()->set().
+    # ------------------------------------------------------------------
+    # Interface → implementation aliases
+    # Public so tests can swap them via static::getContainer()->set().
+    # ------------------------------------------------------------------
+
     App\Infrastructure\System\RandomnessProvider:
         alias: App\Infrastructure\System\MtRandomnessProvider
         public: true
@@ -20,15 +30,46 @@ services:
         alias: App\Infrastructure\System\SystemClock
         public: true
 
-    # Campaign provider: default implementation reads env vars.
     App\Application\Campaign\CampaignProvider:
         alias: App\Application\Campaign\EnvCampaignProvider
         public: true
 
-    # Quote fetcher: default implementation fans out in parallel.
     App\Application\Provider\QuoteFetcher:
         alias: App\Application\Provider\ParallelQuoteFetcher
         public: true
 
-    # XML encoder/decoder used by Provider B's controller.
+    # ------------------------------------------------------------------
+    # Per-class wiring: env-var bindings + tagged-iterator argument.
+    # Constructors stay pure PHP — no Symfony attributes for config or
+    # tagged services. Binds are per-class so `string $baseUrl` never
+    # picks up the wrong URL.
+    # ------------------------------------------------------------------
+
+    App\Application\Campaign\EnvCampaignProvider:
+        bind:
+            bool $active:       '%env(bool:CAMPAIGN_ACTIVE)%'
+            float $percentage:  '%env(float:CAMPAIGN_PERCENTAGE)%'
+
+    App\Application\Provider\ParallelQuoteFetcher:
+        bind:
+            int $timeoutSeconds: '%env(int:PROVIDER_TIMEOUT_SECONDS)%'
+        arguments:
+            $providers: !tagged_iterator app.quote_provider
+
+    App\Infrastructure\Provider\A\ProviderAClient:
+        bind:
+            string $baseUrl: '%env(PROVIDER_A_BASE_URL)%'
+
+    App\Infrastructure\Provider\B\ProviderBClient:
+        bind:
+            string $baseUrl: '%env(PROVIDER_B_BASE_URL)%'
+
+    App\Infrastructure\Provider\C\ProviderCClient:
+        bind:
+            string $baseUrl: '%env(PROVIDER_C_BASE_URL)%'
+
+    # ------------------------------------------------------------------
+    # External Symfony services that aren't auto-registered
+    # ------------------------------------------------------------------
+
     Symfony\Component\Serializer\Encoder\XmlEncoder: ~

@@ -9,12 +9,14 @@ use App\Application\Calculate\CalculateQuoteHandler;
 use App\Application\Provider\FetchResult;
 use App\Domain\Car\CarType;
 use App\Domain\Car\CarUse;
+use App\Domain\Driver\UnderageDriverException;
 use App\Domain\Money\Money;
 use App\Domain\Quote\Quote;
 use App\Tests\Support\FakeClock;
 use App\Tests\Support\FixedCampaignProvider;
 use App\Tests\Support\InMemoryQuoteFetcher;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\NullLogger;
 
 final class CalculateQuoteHandlerTest extends TestCase
 {
@@ -125,6 +127,7 @@ final class CalculateQuoteHandlerTest extends TestCase
             $fetcher,
             FixedCampaignProvider::inactive(),
             new FakeClock(new \DateTimeImmutable('2026-05-13')),
+            new NullLogger(),
         );
 
         $handler->handle(new CalculateQuoteCommand(
@@ -181,6 +184,28 @@ final class CalculateQuoteHandlerTest extends TestCase
         self::assertSame('provider-b', $result->cheapestProviderId());
     }
 
+    /**
+     * The "≥ 18 years" rule lives in the domain ({@see DriverAge::assertInsurable}),
+     * called by the handler — so any caller (this controller, a future CLI
+     * command, etc.) inherits the guarantee for free.
+     */
+    public function testItThrowsUnderageDriverExceptionForADriverBelow18(): void
+    {
+        $handler = $this->handler(
+            campaign: FixedCampaignProvider::inactive(),
+            quotes: [],
+            failed: [],
+        );
+
+        $this->expectException(UnderageDriverException::class);
+
+        $handler->handle(new CalculateQuoteCommand(
+            driverBirthday: new \DateTimeImmutable('2021-01-01'), // age 5 against fake clock 2026-05-13
+            carType: CarType::Turismo,
+            carUse: CarUse::Private,
+        ));
+    }
+
     public function testItRecordsAPositiveDurationMs(): void
     {
         $handler = $this->handler(
@@ -204,6 +229,7 @@ final class CalculateQuoteHandlerTest extends TestCase
             new InMemoryQuoteFetcher(new FetchResult($quotes, $failed)),
             $campaign,
             new FakeClock(new \DateTimeImmutable('2026-05-13')),
+            new NullLogger(),
         );
     }
 

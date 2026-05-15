@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Domain\Driver;
 
 use App\Domain\Driver\DriverAge;
+use App\Domain\Driver\UnderageDriverException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -68,5 +69,20 @@ final class DriverAgeTest extends TestCase
             new \DateTimeImmutable('2030-01-01'),
             new \DateTimeImmutable('2026-05-13'),
         );
+    }
+
+    public function testAssertInsurablePassesAtTheLowerBoundary(): void
+    {
+        // No exception → test passes.
+        (new DriverAge(DriverAge::MIN_INSURABLE_AGE))->assertInsurable();
+        $this->expectNotToPerformAssertions();
+    }
+
+    public function testAssertInsurableRejectsADriverBelowTheMinimumAge(): void
+    {
+        $this->expectException(UnderageDriverException::class);
+        $this->expectExceptionMessageMatches('/at least 18 years old/');
+
+        (new DriverAge(17))->assertInsurable();
     }
 }

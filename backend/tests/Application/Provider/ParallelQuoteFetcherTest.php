@@ -15,6 +15,7 @@ use App\Infrastructure\Provider\A\ProviderAClient;
 use App\Infrastructure\Provider\B\ProviderBClient;
 use App\Infrastructure\Provider\C\ProviderCClient;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\NullLogger;
 use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpClient\Response\MockResponse;
 use Symfony\Contracts\HttpClient\ResponseInterface;
@@ -32,6 +33,7 @@ final class ParallelQuoteFetcherTest extends TestCase
         $fetcher = new ParallelQuoteFetcher(
             providers: $this->providers($client),
             httpClient: $client,
+            logger: new NullLogger(),
             timeoutSeconds: 10,
         );
 
@@ -52,7 +54,7 @@ final class ParallelQuoteFetcherTest extends TestCase
             'provider-c' => new MockResponse("price,currency\n210,EUR"),
         ]);
 
-        $fetcher = new ParallelQuoteFetcher($this->providers($client), $client, 10);
+        $fetcher = new ParallelQuoteFetcher($this->providers($client), $client, 10, new NullLogger());
 
         $result = $fetcher->fetchAll(new DriverAge(30), CarType::Turismo, CarUse::Private);
 
@@ -68,7 +70,7 @@ final class ParallelQuoteFetcherTest extends TestCase
             'provider-c' => new MockResponse('garbage,csv'),
         ]);
 
-        $fetcher = new ParallelQuoteFetcher($this->providers($client), $client, 10);
+        $fetcher = new ParallelQuoteFetcher($this->providers($client), $client, 10, new NullLogger());
 
         $result = $fetcher->fetchAll(new DriverAge(30), CarType::Turismo, CarUse::Private);
 
@@ -87,7 +89,7 @@ final class ParallelQuoteFetcherTest extends TestCase
             'provider-c' => new MockResponse('', ['error' => 'dns failed']),
         ]);
 
-        $fetcher = new ParallelQuoteFetcher($this->providers($client), $client, 10);
+        $fetcher = new ParallelQuoteFetcher($this->providers($client), $client, 10, new NullLogger());
 
         $result = $fetcher->fetchAll(new DriverAge(30), CarType::Turismo, CarUse::Private);
 
@@ -106,7 +108,7 @@ final class ParallelQuoteFetcherTest extends TestCase
             'provider-c' => new MockResponse('', ['http_code' => 503]),
         ]);
 
-        $fetcher = new ParallelQuoteFetcher($this->providers($client), $client, 10);
+        $fetcher = new ParallelQuoteFetcher($this->providers($client), $client, 10, new NullLogger());
 
         $result = $fetcher->fetchAll(new DriverAge(30), CarType::Turismo, CarUse::Private);
 
@@ -131,7 +133,7 @@ final class ParallelQuoteFetcherTest extends TestCase
             'provider-c' => new MockResponse('', ['error' => 'connection refused']),
         ]);
 
-        $fetcher = new ParallelQuoteFetcher($this->providers($client), $client, 10);
+        $fetcher = new ParallelQuoteFetcher($this->providers($client), $client, 10, new NullLogger());
 
         $result = $fetcher->fetchAll(new DriverAge(30), CarType::Turismo, CarUse::Private);
 
@@ -168,7 +170,7 @@ final class ParallelQuoteFetcherTest extends TestCase
             $this->throwingProviderNamed('provider-z'),
         ];
 
-        $fetcher = new ParallelQuoteFetcher($providers, $client, 10);
+        $fetcher = new ParallelQuoteFetcher($providers, $client, 10, new NullLogger());
 
         $result = $fetcher->fetchAll(new DriverAge(30), CarType::Turismo, CarUse::Private);
 
