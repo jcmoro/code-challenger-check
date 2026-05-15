@@ -40,8 +40,10 @@ cp .env.example .env
 make build         # build all images
 make install       # composer install + npm install (inside containers)
 make up-d          # start the stack in the background
-make test          # run all 132 tests (91 backend + 41 frontend)
+make test          # run all 215 tests (113 backend + 102 frontend)
 make lint          # PHPStan level 10 + PHP-CS-Fixer + ESLint + Prettier + vue-tsc
+make coverage      # PHPUnit Clover + Vitest LCOV reports
+make sonar         # upload analysis to SonarCloud (needs SONAR_TOKEN)
 ```
 
 Then open in a browser:
@@ -131,8 +133,22 @@ workflow — the seven groups below mirror what you'll see there.
 | Target               | Purpose                                |
 | -------------------- | -------------------------------------- |
 | `make test`          | Run all tests (backend + frontend)     |
-| `make test-backend`  | Just PHPUnit (91 cases)                |
-| `make test-frontend` | Just Vitest (41 cases)                 |
+| `make test-backend`  | Just PHPUnit (113 cases)               |
+| `make test-frontend` | Just Vitest (102 cases)                |
+
+### Coverage & SonarCloud
+
+| Target                   | Purpose                                                                |
+| ------------------------ | ---------------------------------------------------------------------- |
+| `make coverage`          | Generate PHPUnit (Clover) + Vitest (LCOV) reports                      |
+| `make coverage-backend`  | Just PHPUnit with pcov → `backend/var/coverage/clover.xml`             |
+| `make coverage-frontend` | Just Vitest with v8 → `frontend/coverage/lcov.info`                    |
+| `make sonar`             | Upload analysis to SonarCloud (requires `SONAR_TOKEN` in env)          |
+
+`make sonar` runs `sonarsource/sonar-scanner-cli` against the host repo
+via Docker — no SonarScanner or Node install on the host needed. The
+SonarCloud project is `jcmoro_code-challenger-check`; config lives in
+[`sonar-project.properties`](./sonar-project.properties).
 
 ### Quality — lint + static analysis (check mode)
 
@@ -171,8 +187,9 @@ Plus `make help` (the default goal) to print the live menu.
 ├── docker-compose.yml
 ├── docker-compose.override.yml
 ├── .env.example
+├── sonar-project.properties # SonarCloud monorepo config + rule overrides
 ├── docker/                  # Dockerfiles + service configs
-│   ├── php/                 # PHP 8.4-fpm-alpine with required extensions
+│   ├── php/                 # PHP 8.4-fpm-alpine with required extensions + pcov
 │   ├── nginx/               # 1.27-alpine fronting PHP-FPM
 │   └── node/                # Node 20-alpine running Vite dev
 ├── docs/
@@ -182,8 +199,8 @@ Plus `make help` (the default goal) to print the live menu.
 │   ├── src/
 │   │   ├── Domain/          # Pure value objects (DriverAge, Money, Quote, …)
 │   │   ├── Application/     # Use cases (CalculateQuoteHandler, …)
-│   │   ├── Infrastructure/  # Adapters (Provider clients, System services)
-│   │   └── UI/Http/         # Controllers + DTOs + listeners
+│   │   ├── Infrastructure/  # Adapters: Provider{A,B,C}{Client,PricingService,Simulator}, System services
+│   │   └── UI/Http/         # Controller + DTO + Response/CalculateQuoteResponseFactory + listeners
 │   ├── config/
 │   └── tests/
 └── frontend/                # Vue 3 + TypeScript + Vite
@@ -210,7 +227,7 @@ Six markdown documents in [`docs/plan/`](./docs/plan/) capture the
 3. [`specification.md`](docs/plan/specification.md) — detailed contracts: API request/response shapes, vocabulary mapping table (user-facing ↔ each provider), error semantics, frontend component structure.
 4. [`implementation.md`](docs/plan/implementation.md) — eight phased build plan with exit criteria, technology choices (locked), repo layout, Makefile sketch, and effort estimate.
 5. [`validation.md`](docs/plan/validation.md) — five-layer validation strategy (tooling → unit → integration → end-to-end → reviewer walk-through), exhaustive pricing test tables, binary acceptance criteria.
-6. [`replanning.md`](docs/plan/replanning.md) — the change log: 24 entries documenting every decision that drifted from the original plan, with trigger / change / impact / cost / risk for each.
+6. [`replanning.md`](docs/plan/replanning.md) — the change log: 28 entries documenting every decision that drifted from the original plan, with trigger / change / impact / cost / risk for each.
 
 ---
 
@@ -263,14 +280,14 @@ Response (campaign active):
 ```
 
 Validation errors come back as `400` with a uniform envelope, regardless of
-whether the violation was caught by Symfony's `MapRequestPayload` or by the
-controller's post-mapping check (age ≥ 18, etc.):
+whether the violation was caught by Symfony's `MapRequestPayload` or thrown
+from the domain (`UnderageDriverException` for age < 18, future birthday, …):
 
 ```json
 {
   "error": "validation_failed",
   "violations": [
-    { "field": "driver_birthday", "message": "driver must be at least 18 years old" }
+    { "field": "driver_birthday", "message": "Driver must be at least 18 years old, got 17." }
   ]
 }
 ```

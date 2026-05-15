@@ -7,9 +7,7 @@ namespace App\UI\Http\Controller;
 use App\Domain\Car\TipoCoche;
 use App\Domain\Car\UsoCoche;
 use App\Domain\Driver\DriverAge;
-use App\Infrastructure\Provider\B\ProviderBPricingService;
-use App\Infrastructure\System\Clock;
-use App\Infrastructure\System\RandomnessProvider;
+use App\Infrastructure\Provider\B\ProviderBSimulator;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -37,25 +35,13 @@ final readonly class ProviderBController
 {
     public const string CONTENT_TYPE_XML = 'application/xml';
 
-    private const int LATENCY_SECONDS = 5;
-    private const int EXTRA_LATENCY_SECONDS = 55;
-    private const int EXTRA_LATENCY_PERCENT = 1;
-
     public function __construct(
-        private ProviderBPricingService $pricing,
-        private RandomnessProvider $random,
-        private Clock $clock,
+        private ProviderBSimulator $simulator,
         private XmlEncoder $xml,
     ) {}
 
     public function __invoke(Request $request): Response
     {
-        $this->clock->sleep(self::LATENCY_SECONDS);
-
-        if ($this->random->intInRange(1, 100) <= self::EXTRA_LATENCY_PERCENT) {
-            $this->clock->sleep(self::EXTRA_LATENCY_SECONDS);
-        }
-
         $body = trim($request->getContent());
         if ('' === $body) {
             return $this->errorResponse('empty_request', Response::HTTP_BAD_REQUEST);
@@ -82,7 +68,7 @@ final readonly class ProviderBController
             return $this->errorResponse('invalid_age', Response::HTTP_BAD_REQUEST);
         }
 
-        $price = $this->pricing->priceFor($driverAge, $tipo, $uso->toCarUse());
+        $price = $this->simulator->quote($driverAge, $tipo, $uso->toCarUse());
 
         $xml = $this->xml->encode(
             [

@@ -6,10 +6,8 @@ namespace App\UI\Http\Controller;
 
 use App\Application\Calculate\CalculateQuoteCommand;
 use App\Application\Calculate\CalculateQuoteHandler;
-use App\Application\Calculate\CalculateQuoteResult;
-use App\Domain\Money\Money;
-use App\Domain\Quote\Quote;
 use App\UI\Http\Dto\CalculateQuoteHttpRequest;
+use App\UI\Http\Response\CalculateQuoteResponseFactory;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
@@ -55,6 +53,7 @@ final readonly class CalculateController
 {
     public function __construct(
         private CalculateQuoteHandler $handler,
+        private CalculateQuoteResponseFactory $responseFactory,
     ) {}
 
     public function __invoke(#[MapRequestPayload] CalculateQuoteHttpRequest $request): JsonResponse
@@ -66,67 +65,10 @@ final readonly class CalculateController
                 carUse: $request->toCarUse(),
             ));
         } catch (\DomainException $e) {
-            // The handler/domain enforce birthday validity (future date, age
-            // out of range, under-{@see DriverAge::MIN_INSURABLE_AGE}). All
-            // surface here as a single 400 with the same structured envelope.
             return $this->validationError('driver_birthday', $e->getMessage());
         }
 
-        $response = new JsonResponse();
-        $response->setEncodingOptions($response->getEncodingOptions() | \JSON_PRESERVE_ZERO_FRACTION);
-        $response->setData($this->serializeResult($result));
-
-        return $response;
-    }
-
-    /**
-     * @return array{
-     *     campaign: array{active: bool, percentage: float},
-     *     quotes: list<array{provider: string, price: array{amount: float, currency: string}, discounted_price: array{amount: float, currency: string}|null, is_cheapest: bool}>,
-     *     meta: array{duration_ms: int, failed_providers: list<string>}
-     * }
-     */
-    private function serializeResult(CalculateQuoteResult $result): array
-    {
-        $cheapestId = $result->cheapestProviderId();
-
-        return [
-            'campaign' => [
-                'active' => $result->campaign->active,
-                'percentage' => round($result->campaign->percentage, 2),
-            ],
-            'quotes' => array_map(
-                fn(Quote $q): array => $this->serializeQuote($q, $cheapestId),
-                $result->quotes,
-            ),
-            'meta' => [
-                'duration_ms' => $result->durationMs,
-                'failed_providers' => $result->failedProviderIds,
-            ],
-        ];
-    }
-
-    /**
-     * @return array{provider: string, price: array{amount: float, currency: string}, discounted_price: array{amount: float, currency: string}|null, is_cheapest: bool}
-     */
-    private function serializeQuote(Quote $quote, ?string $cheapestId): array
-    {
-        return [
-            'provider' => $quote->providerId,
-            'price' => $this->serializeMoney($quote->price->rounded()),
-            'discounted_price' => null !== $quote->discountedPrice
-                ? $this->serializeMoney($quote->discountedPrice->rounded())
-                : null,
-            'is_cheapest' => $quote->providerId === $cheapestId,
-        ];
-    }
-
-    /**
-     * @return array{amount: float, currency: string}
-     */
-    private function serializeMoney(Money $money): array
-    {
-        return ['amount' => $money->amount, 'currency' => $money->currency];
+        return $this->responseFactory->fromResult($result);
     }
 
     private function validationError(string $field, string $message): JsonResponse

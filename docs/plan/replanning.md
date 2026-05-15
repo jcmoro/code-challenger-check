@@ -397,6 +397,131 @@ serves as a one-stop reference for the response shape).
 
 ---
 
+### 26. SonarCloud added as a quality gate (scanner-on-demand, no CI yet) <2026-05-15>
+**Trigger:** validation.md asked for "PHPStan + ESLint + Prettier" as the
+quality bar. Reviewer-facing static analysis (Sonar-style) was not in
+the original plan. Adding it surfaced 25 latent code smells across the
+existing codebase plus several documentation/tooling decisions worth
+recording.
+**Change:**
+- `sonar-project.properties` (new) — monorepo config (`sources=backend/src,frontend/src`,
+  `tests=backend/tests,frontend/tests`). PHP coverage via Clover, JS via LCOV.
+- Multicriteria suppression for two rules with documented false-positive
+  patterns in this codebase:
+  - `php:S116` (snake_case fields) in `**/Http/Dto/**` and
+    `**/Provider*Request.php` — these DTOs intentionally mirror the wire
+    format; renaming would need `#[SerializedName(...)]` per field or
+    break the contract.
+  - `php:S1142` ("more than 3 returns") in `**/Infrastructure/Provider/**/*Client.php`
+    and `**/UI/Http/Controller/Provider*Controller.php` — these are guard
+    clauses for untrusted external input (JSON / XML / CSV); collapsing
+    to a single return nests deeper and worsens cognitive complexity.
+- `docker/php/Dockerfile`: `pecl install pcov` + `docker-php-ext-enable pcov`.
+- `docker/php/php.ini`: `pcov.enabled=1`, `pcov.directory=/app/src`.
+- `frontend/vitest.config.ts`: `'lcov'` added to `coverage.reporter`.
+- `Makefile`: targets `coverage`, `coverage-backend`, `coverage-frontend`,
+  `sonar`. `coverage-backend` post-processes `clover.xml` with `sed` to
+  rewrite container-side paths (`/app/...`) to repo-relative (`backend/...`)
+  so the scanner can resolve them.
+- `docker-compose.override.yml`: removed the `frontend_node_modules`
+  named volume. It was there for pre-VirtioFS macOS perf; today it
+  prevented the host IDE from resolving `vite/client`, `@vue/tsconfig`,
+  etc. — TS errors that didn't reproduce in CLI.
+- SonarCloud project: New Code definition set to "Number of days = 1"
+  (the SonarCloud free plan doesn't expose "Specific analysis"). Result:
+  the bootstrapping phase does not poison the `new_coverage` threshold.
+**Impact:**
+- New `make sonar` flow is reproducible inside Docker (no Node / SonarScanner
+  on host).
+- Reviewers / CI can run `SONAR_TOKEN=... make coverage && make sonar`
+  for an authoritative Sonar pass.
+- 0 issues / quality gate PASSED at the end of the same-day sweep
+  (see replanning #27 and #28 for the matching code-side cleanups).
+- Setting "Number of days = 1" means `new_coverage` becomes meaningful
+  only from 2026-05-16 onwards. Acceptable trade-off for a code challenge.
+- GitHub Actions workflow (`.github/workflows/sonar.yml`) deferred —
+  recorded in §6 as out-of-scope-for-now.
+**Cost / risk:** Two extra Docker layers (pcov), ~250 MB of node_modules
+duplicated on host, and ~70 lines of `sonar-project.properties` to maintain.
+The `sed` post-process on `clover.xml` is a known smell — long-term it would
+move to PHPUnit's source path config or a custom processor.
+**Author:** project owner.
+
+---
+
+### 27. Provider business rule moved out of controllers (constitution §88 enforcement) <2026-05-15>
+**Trigger:** Manual audit of the 4 controllers against `constitution.md`
+§88 ("No business rule lives in a controller"). The 3 provider
+controllers each repeated `clock->sleep(N); if (random ≤ M) return error;`
+inline — that simulated latency + error-rate is the **business behaviour
+of the provider** (PDF §1.2), not HTTP plumbing.
+**Change:**
+- New `App\Infrastructure\Provider\A\ProviderASimulator` (2 s baseline,
+  10 % failure rate, returns `?int`).
+- New `App\Infrastructure\Provider\B\ProviderBSimulator` (5 s baseline,
+  1 % chance of +55 s spike, never fails — returns `int`).
+- New `App\Infrastructure\Provider\C\ProviderCSimulator` (1 s baseline,
+  5 % failure rate, returns `?int`).
+- Each controller becomes a pure format-adapter: parse input → call simulator
+  → format output. Latency / random constants live next to the simulator,
+  not the controller.
+- Existing `Provider{A,B,C}ControllerTest` (WebTestCase) untouched and
+  still pass — proof of behavioural equivalence.
+- 9 new unit tests (`Provider{A,B,C}SimulatorTest`) for the simulators,
+  using `FakeClock` + `FixedRandomnessProvider`. Run without booting the
+  kernel; pin both happy and failure paths plus boundary rolls.
+**Impact:**
+- HTTP contract: unchanged for all 3 providers (same JSON / XML / CSV).
+- Total controller LoC: 268 → 228 (−15 %).
+- `php:S1142` ("too many returns") still ignored on these controllers
+  via Sonar multicriteria — the simulators don't have that smell, but
+  the format-parsing in B and C still uses guard clauses.
+**Cost / risk:** Three extra source files + three extra test files. The
+simulators live in `Infrastructure/Provider/` (cohesion with their
+matching `*PricingService` and `*Client`), even though they technically
+orchestrate Application-layer concerns (`Clock`, `RandomnessProvider`).
+Acceptable — the constitution forbids leakage *out* of layers, not strict
+co-location.
+**Author:** project owner.
+
+---
+
+### 28. `CalculateQuoteResponseFactory` extracted from `CalculateController` <2026-05-15>
+**Trigger:** Same audit as #27. `CalculateController` was at 139 lines
+with three private serialization helpers (`serializeResult`,
+`serializeQuote`, `serializeMoney`) and the `JSON_PRESERVE_ZERO_FRACTION`
+flag setup. Not a constitution violation (presentation logic is HTTP's
+business) but a clear cohesion smell.
+**Change:**
+- New `App\UI\Http\Response\CalculateQuoteResponseFactory::fromResult(CalculateQuoteResult): JsonResponse`
+  owns the wire format and the `JSON_PRESERVE_ZERO_FRACTION` flag.
+- `CalculateController` shrinks to 84 lines; it now does only:
+  parse DTO → invoke handler → translate `\DomainException` to 400 →
+  delegate 200 to the factory.
+- 5 unit tests for the factory cover the corners that previously needed
+  `WebTestCase`: `is_cheapest` flag, `discounted_price` null vs present,
+  `5.0` not degrading to `5`, `percentage` rounded to 2 decimals,
+  `failed_providers` and `durationMs` propagated to `meta`, and
+  `quotes:[]` not degenerating to `null`.
+- An earlier attempt to also extract reusable `OA\Schema` components
+  (`ValidationError`, `CalculateQuoteResponse`) was applied and then
+  reverted — for a 4-endpoint code challenge, the inline `example: [...]`
+  blocks in the controller are ergonomic enough; the indirection cost
+  outweighed the cleanup. Decision recorded so this isn't relitigated.
+**Impact:**
+- HTTP contract: byte-for-byte unchanged.
+- Tests: 113 backend (was 108 → +5 factory tests).
+- Coverage dipped from 90.9 % → 88.5 % because the factory adds 67 LoC,
+  not all of which are exercised by the 5 unit tests (the rest is
+  covered indirectly via `CalculateControllerTest`). Still well above
+  the 80 % gate.
+**Cost / risk:** One new class + one new test file. The factory takes
+no constructor args (no DI complexity). `validationError()` stays in the
+controller — 6 lines, single use site, not worth extracting.
+**Author:** project owner.
+
+---
+
 ## 6. Out-of-Scope, Re-Opened If Asked
 
 These were ruled out by the constitution but may be re-opened on review feedback:

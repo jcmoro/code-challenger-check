@@ -7,9 +7,7 @@ namespace App\UI\Http\Controller;
 use App\Domain\Car\CarForm;
 use App\Domain\Car\CarUse;
 use App\Domain\Driver\DriverAge;
-use App\Infrastructure\Provider\C\ProviderCPricingService;
-use App\Infrastructure\System\Clock;
-use App\Infrastructure\System\RandomnessProvider;
+use App\Infrastructure\Provider\C\ProviderCSimulator;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -29,25 +27,14 @@ use Symfony\Component\Routing\Attribute\Route;
 #[OA\Response(response: 503, description: 'Simulated upstream failure (5% rate).')]
 final readonly class ProviderCController
 {
-    private const int LATENCY_SECONDS = 1;
-    private const int ERROR_PERCENT = 5;
-
     private const string CONTENT_TYPE = 'text/csv; charset=UTF-8';
 
     public function __construct(
-        private ProviderCPricingService $pricing,
-        private RandomnessProvider $random,
-        private Clock $clock,
+        private ProviderCSimulator $simulator,
     ) {}
 
     public function __invoke(Request $request): Response
     {
-        $this->clock->sleep(self::LATENCY_SECONDS);
-
-        if ($this->random->intInRange(1, 100) <= self::ERROR_PERCENT) {
-            return $this->error('provider_c_unavailable', Response::HTTP_SERVICE_UNAVAILABLE);
-        }
-
         $data = $this->parseCsv($request->getContent());
         if (null === $data) {
             return $this->error('invalid_csv', Response::HTTP_BAD_REQUEST);
@@ -65,7 +52,10 @@ final readonly class ProviderCController
             return $this->error('invalid_age', Response::HTTP_BAD_REQUEST);
         }
 
-        $price = $this->pricing->priceFor($age, $form, $use);
+        $price = $this->simulator->quote($age, $form, $use);
+        if (null === $price) {
+            return $this->error('provider_c_unavailable', Response::HTTP_SERVICE_UNAVAILABLE);
+        }
 
         return new Response(
             "price,currency\n{$price},EUR\n",
