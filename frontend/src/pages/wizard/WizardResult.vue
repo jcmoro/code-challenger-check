@@ -14,9 +14,9 @@ if (!formState || !calculate) throw new Error('WizardResult must be a child of W
 const { form } = formState;
 const { loading, error, data, submit, retry } = calculate;
 
-onMounted(() => {
+onMounted(async () => {
   if (form.driver_birthday && form.car_type && form.car_use) {
-    void submit({
+    await submit({
       driver_birthday: form.driver_birthday,
       car_type: form.car_type,
       car_use: form.car_use,
