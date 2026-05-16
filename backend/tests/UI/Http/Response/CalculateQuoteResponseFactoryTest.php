@@ -97,6 +97,13 @@ final class CalculateQuoteResponseFactoryTest extends TestCase
         self::assertStringContainsString('"quotes":[]', $json);
     }
 
+    public function testItExposesTheRequestIdAsAResponseHeader(): void
+    {
+        $response = $this->build(quotes: [], failed: [], requestId: 'abc1234567890def');
+
+        self::assertSame('abc1234567890def', $response->headers->get('X-Request-Id'));
+    }
+
     /**
      * @param list<Quote> $quotes
      * @param list<string> $failed
@@ -107,6 +114,7 @@ final class CalculateQuoteResponseFactoryTest extends TestCase
         bool $campaignActive = false,
         float $campaignPercentage = 0.0,
         int $durationMs = 100,
+        string $requestId = 'test-request-id',
     ): \Symfony\Component\HttpFoundation\JsonResponse {
         $factory = new CalculateQuoteResponseFactory();
 
@@ -115,6 +123,7 @@ final class CalculateQuoteResponseFactoryTest extends TestCase
             quotes: $quotes,
             failedProviderIds: $failed,
             durationMs: $durationMs,
+            requestId: $requestId,
         ));
     }
 

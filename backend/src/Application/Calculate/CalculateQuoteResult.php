@@ -12,12 +12,14 @@ final readonly class CalculateQuoteResult
     /**
      * @param list<Quote> $quotes already sorted ascending by final price
      * @param list<string> $failedProviderIds
+     * @param string $requestId 16-char hex correlation id (also surfaced as the `X-Request-Id` response header for support / debugging)
      */
     public function __construct(
         public CampaignState $campaign,
         public array $quotes,
         public array $failedProviderIds,
         public int $durationMs,
+        public string $requestId,
     ) {}
 
     public function cheapestProviderId(): ?string

@@ -8,6 +8,7 @@ use App\Application\Calculate\CalculateQuoteCommand;
 use App\Application\Calculate\CalculateQuoteHandler;
 use App\UI\Http\Dto\CalculateQuoteHttpRequest;
 use App\UI\Http\Response\CalculateQuoteResponseFactory;
+use App\UI\Http\Response\ValidationErrorResponse;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
@@ -54,6 +55,7 @@ final readonly class CalculateController
     public function __construct(
         private CalculateQuoteHandler $handler,
         private CalculateQuoteResponseFactory $responseFactory,
+        private ValidationErrorResponse $validationErrorFactory,
     ) {}
 
     public function __invoke(#[MapRequestPayload] CalculateQuoteHttpRequest $request): JsonResponse
@@ -65,17 +67,9 @@ final readonly class CalculateController
                 carUse: $request->toCarUse(),
             ));
         } catch (\DomainException $e) {
-            return $this->validationError('driver_birthday', $e->getMessage());
+            return $this->validationErrorFactory->fromField('driver_birthday', $e->getMessage());
         }
 
         return $this->responseFactory->fromResult($result);
-    }
-
-    private function validationError(string $field, string $message): JsonResponse
-    {
-        return new JsonResponse([
-            'error' => 'validation_failed',
-            'violations' => [['field' => $field, 'message' => $message]],
-        ], JsonResponse::HTTP_BAD_REQUEST);
     }
 }

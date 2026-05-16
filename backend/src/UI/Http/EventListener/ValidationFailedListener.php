@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\UI\Http\EventListener;
 
+use App\UI\Http\Response\ValidationErrorResponse;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
-use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpKernel\Event\ExceptionEvent;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\Validator\Exception\ValidationFailedException;
@@ -15,8 +15,12 @@ use Symfony\Component\Validator\Exception\ValidationFailedException;
  * spec's `{ error: "validation_failed", violations: [...] }` envelope at 400.
  */
 #[AsEventListener(event: ExceptionEvent::class)]
-final class ValidationFailedListener
+final readonly class ValidationFailedListener
 {
+    public function __construct(
+        private ValidationErrorResponse $validationErrorFactory,
+    ) {}
+
     public function __invoke(ExceptionEvent $event): void
     {
         $throwable = $event->getThrowable();
@@ -26,17 +30,6 @@ final class ValidationFailedListener
             return;
         }
 
-        $violations = [];
-        foreach ($previous->getViolations() as $violation) {
-            $violations[] = [
-                'field' => $violation->getPropertyPath(),
-                'message' => (string) $violation->getMessage(),
-            ];
-        }
-
-        $event->setResponse(new JsonResponse(
-            ['error' => 'validation_failed', 'violations' => $violations],
-            JsonResponse::HTTP_BAD_REQUEST,
-        ));
+        $event->setResponse($this->validationErrorFactory->fromViolations($previous->getViolations()));
     }
 }

@@ -66,6 +66,7 @@ final readonly class CalculateQuoteHandler
             quotes: $quotes,
             failedProviderIds: $fetch->failedProviderIds,
             durationMs: $durationMs,
+            requestId: $requestId,
         );
     }
 
