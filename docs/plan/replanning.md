@@ -522,6 +522,269 @@ controller — 6 lines, single use site, not worth extracting.
 
 ---
 
+### 29. `Provider{B,C}` codecs extracted — one wire format, one source of truth <2026-05-15>
+**Trigger:** Continuation of the §88 audit (#27, #28). Two real smells
+surfaced once the controllers were thin enough to read end-to-end:
+1. Provider B's XML envelope was being parsed with **two different
+   libraries** — `Symfony\…\XmlEncoder` in `ProviderBController`, but
+   `simplexml_load_string` (with `libxml_use_internal_errors` toggling)
+   in `ProviderBClient`. Same wire format, two parsing surfaces, drift
+   risk on every spec change.
+2. Provider C's CSV (one header + one data row) was being parsed by
+   **two near-identical implementations** — `ProviderCController::parseCsv()`
+   and `ProviderCClient::parseResponse()`. Encoding was inline `\sprintf`
+   in three places.
+**Change:**
+- New `App\Infrastructure\Provider\B\ProviderBXmlCodec` — thin wrapper
+  over `XmlEncoder` exposing `decode(string): ?array` and
+  `encode(string $rootNode, array): string`. Both directions now go through
+  the same Symfony component.
+- New `App\Infrastructure\Provider\C\ProviderCCsvCodec` — `decodeRow(string): ?array`
+  + `encodeRow(array): string`. Two-line CSV with header + data.
+- `ProviderBController`, `ProviderBClient`, `ProviderCController`,
+  `ProviderCClient` re-wired to depend on the codec. `simplexml`,
+  `libxml_use_internal_errors`, `str_getcsv`, `array_combine` — all
+  removed from controllers and clients.
+- 14 new unit tests (7 per codec) cover happy path, malformed input,
+  blank lines, mismatched columns, encode↔decode roundtrip. No kernel.
+- `ParallelQuoteFetcherTest` updated where it constructs the clients
+  directly — added the codec arg + relevant imports.
+**Impact:**
+- HTTP contracts (B XML and C CSV) byte-for-byte unchanged.
+- LoC trimmed: `ProviderBClient` 70→60, `ProviderCClient` 81→64,
+  `ProviderBController` 95→91, `ProviderCController` 90→75.
+- Backend tests: 113 → 127.
+- Future spec changes for either format touch a single class.
+**Cost / risk:** Two new source files + two new test files. Both clients
+gained a constructor arg (the codec); auto-resolved by autowire so
+`services.yaml` did not need changes.
+**Author:** project owner.
+
+---
+
+### 30. Senior pass on #29: revert `ProviderBXmlCodec`, narrow exception catches <2026-05-15>
+**Trigger:** Critical second look at #29 caught two real debt items the
+first pass introduced:
+1. The first scan after extracting `ProviderBXmlCodec` flagged `php:S1488`
+   ("immediately return this expression") on the codec's `decode()`. The
+   instinctive fix — adding multicriteria suppression — was rejected as
+   "no se debe excluir de Sonar un error localizado, se debe corregir".
+   The next attempt — runtime `foreach` validating every leaf — was
+   correctly called out as overengineered defence (CLAUDE.md: "don't add
+   validation for scenarios that can't happen"). The deeper question
+   surfaced: does the codec abstraction even pay for itself for B?
+2. `catch (\Throwable)` in three sites (`ProviderAClient::parseResponse`,
+   `ProviderBClient::parseResponse`, `ProviderBController::__invoke`) was
+   broader than warranted — masks `\TypeError` / `\Error` (programming
+   bugs) as "provider failed".
+**Change:**
+- `ProviderBXmlCodec.php` and its 7 tests deleted. `ProviderBClient` and
+  `ProviderBController` now inject `XmlEncoder` directly. Both sides use
+  the same Symfony component (the original goal of #29 is preserved
+  without the wrapper).
+- Catches narrowed where the layer knows the concrete library:
+  - `ProviderAClient::parseResponse` → `HttpClientExceptionInterface | \JsonException`
+  - `ProviderBClient::parseResponse` and `ProviderBController::__invoke` → `NotEncodableValueException`
+- `ParallelQuoteFetcher` keeps `catch (\Throwable)` on `startRequest` and
+  `cancel()` deliberately: those are **port-boundary** catches
+  (`QuoteProvider` is an interface; any implementation may throw
+  anything) and the cleanup catch is documented belt-and-suspenders.
+- `sonar-project.properties` reformatted — `multicriteria` listed with
+  line continuation, each rule's rationale comment immediately above its
+  block. Header explicitly states the contract: "narrow, file-scoped,
+  with documented rationale; exists because the rule's premise doesn't
+  apply, not to silence a real warning".
+**Impact:**
+- HTTP contracts unchanged (B and C byte-for-byte identical).
+- Backend tests: 127 → 120 (−7 codec tests removed; coverage of the
+  removed paths is reabsorbed by the existing controller/client tests
+  that exercise the same code through `XmlEncoder` directly).
+- SonarCloud after the change: 0 issues, gate green, coverage 93.2 %.
+- The remaining `ProviderCCsvCodec` is justified — CSV had real
+  implementation duplication (4 sites, ~25 lines of `array_filter +
+  str_getcsv + array_combine + sprintf`); XML didn't.
+**Cost / risk:** Documented partial revert of #29. The senior lesson
+captured here: "abstraction must pay for its own tax" — a thin wrapper
+over a service that's already an abstraction is overhead, not value.
+Same logic applies if anyone later proposes a `ProviderAJsonCodec` or
+similar.
+**Author:** project owner.
+
+---
+
+### 31. `ParallelQuoteFetcher`: `Quote|true` sentinel replaced with `?Quote` <2026-05-15>
+**Trigger:** Senior audit pass after the codec calibration. The internal
+`FetchSession::$resolved` map used `Quote|true` where `true` meant "this
+provider was rejected". Mixing a primitive sentinel into a domain-type
+union is a recognised code smell — `null` is the idiomatic PHP signal
+for absence.
+**Change:**
+- `finalize()` return type → `?Quote`. Both failure paths (non-2xx,
+  unparseable body) now `return null` instead of `return true`.
+- `markResolvedFailure()` writes `null` instead of `true`.
+- `handleChunk()`: the "already resolved?" guard switched from `!isset`
+  to `!array_key_exists` (necessary because `isset` returns false for
+  null values, which would re-finalize an already-failed entry).
+- `handleChunk()` outcome branch: `true === $entry ? FAILED : OK`
+  becomes `null === $entry ? FAILED : OK`.
+- `buildFetchResult()` rewritten with three explicit branches: key
+  absent → defensive timeout, value null → resolved as failed, value
+  Quote → success.
+- `FetchSession::$resolved` PHPDoc upgraded to enumerate the three
+  states (key absent / null / Quote).
+**Impact:**
+- HTTP contract: unchanged (the three semantic outcomes are preserved
+  byte-for-byte).
+- Tests: 120/120 still green; no new tests needed (existing
+  `ParallelQuoteFetcherTest` already covers the three paths).
+- PHPStan level 10 happy with the cleaner union.
+**Cost / risk:** None observed. The `array_key_exists` substitution is
+a one-character semantic difference from `isset` that is easy to miss
+in review — captured here so a future "use isset, it's faster" PR has
+this entry to land against.
+**Author:** project owner.
+
+---
+
+### 32. Dockerfile `USER` directives deferred (containers are dev/CI, not production) <2026-05-15>
+**Trigger:** SonarQube rule S6471 / generic security review flags
+"container should not run as root". The three Dockerfiles
+(`docker/{php,nginx,node}/Dockerfile`) have no `USER` directive — all
+processes run as root inside the container.
+**Change:** None. Decision documented here.
+**Rationale:**
+- These containers exist only for local dev (`make up`, `make test`,
+  `make sonar`) and CI. There is no production deploy in scope (per
+  `constitution.md` §5: no persistence, no auth, no infra beyond Docker
+  on the developer's machine).
+- Adding `USER` non-trivially affects the bind-mount workflow:
+  - `docker/php/Dockerfile`: `composer install` and PHPUnit + pcov write
+    to `/app/vendor`, `/app/var/cache`, `/app/var/coverage` — bind-mounted.
+    Running as `www-data` (UID 82) requires either chowning host paths
+    or matching UIDs via `--build-arg HOST_UID=$(id -u)`.
+  - `docker/node/Dockerfile`: `npm install` writes to `/app/node_modules`
+    (named volume since #...; was bind-mounted earlier). Same UID issue.
+  - `docker/nginx/Dockerfile`: bind to port 80 requires root. Switching
+    to `nginxinc/nginx-unprivileged` (binds 8080) needs the compose
+    port mapping to change to `8080:8080`.
+- The proper hardening for production would be a multi-stage build
+  separating the dev image from a slim non-root prod image, plus a
+  CI-time vulnerability scan. That is out of scope for a code-challenge
+  submission.
+**Impact:**
+- SonarCloud's PHP/JS analyzers do not enable Docker rules by default
+  on the free tier, so this isn't surfaced as an open issue today.
+- A future maintainer reading the Dockerfiles will find the rationale
+  here instead of re-litigating "why no USER".
+**Cost / risk:** Documented dev-only stance. If the project ever gets a
+production deploy, this entry is the first thing to revisit (along with
+adding a `prod` build target, multi-stage hardening, vulnerability
+scanning, and a separate compose file).
+**Author:** project owner.
+
+---
+
+### 33. `X-Request-Id` response header + `ValidationErrorResponse` factory <2026-05-16>
+**Trigger:** Senior audit pass on the HTTP layer surfaced two findings:
+1. `request_id` was generated inside `CalculateQuoteHandler` (for log
+   correlation) but never reached the client. A user reporting "my call
+   failed" had no id to share — support had to hunt by timestamp + IP.
+2. The `{ error: 'validation_failed', violations: [...] }` envelope was
+   built in two places: `ValidationFailedListener` (Symfony validator
+   failures) and `CalculateController::validationError()` (domain
+   exceptions). Format change → two-place edit.
+**Change:**
+- New `App\UI\Http\Response\ValidationErrorResponse` factory with
+  `fromField(string, string): JsonResponse` and
+  `fromViolations(ConstraintViolationListInterface): JsonResponse`.
+  Both producers (controller and listener) now route through this single
+  source of truth for the 400 envelope.
+- `CalculateQuoteResult` gained a `requestId` field (the handler already
+  generated it; previously only logged).
+- `CalculateQuoteResponseFactory::fromResult()` sets `X-Request-Id`
+  header on the response from `result->requestId`.
+- `ValidationFailedListener` is now `final readonly` with the factory
+  injected via constructor.
+**Impact:**
+- HTTP body of `/calculate` 200 unchanged byte-for-byte; new header
+  `X-Request-Id` exposed.
+- HTTP body of `/calculate` 400 unchanged (same envelope, single
+  builder).
+- Backend tests: 120 → 121 (+1 for the X-Request-Id assertion).
+- Operational: log line and response header now share the same
+  correlation id — support can search logs by the value the client
+  shows.
+- Future formal addition of `request_id` field to the JSON envelope
+  itself (or i18n on `message`) is a one-file change in
+  `ValidationErrorResponse`.
+**Cost / risk:** `CalculateQuoteResult` now carries a tracing field
+(`requestId`) — small leak of HTTP / observability concern into the
+application result. Acceptable: the result is already a
+presentation-shaped DTO (it has `durationMs`); `requestId` fits the
+pattern. The alternative (request listener storing in request
+attributes + response listener reading them) is more layers for the
+same outcome.
+**Author:** project owner.
+
+---
+
+### 34. Frontend captures `X-Request-Id` and surfaces it in `ErrorMessage` <2026-05-16>
+**Trigger:** Audit pass after #33. The backend exposes `X-Request-Id`
+on every `/calculate` response — but the SPA was throwing the header
+away. Net effect: the correlation id was useful only to anyone willing
+to open devtools. The natural completion of #33 is "the user reads it
+in the UI and shares it with support".
+**Change:**
+- `ApiError` gains an optional `requestId?: string` (5th constructor
+  argument).
+- `ApiClient.postJson()` reads `response.headers.get('X-Request-Id')`
+  once and propagates it to both error branches (4xx validation, 5xx
+  server). Captured in a single place; not surfaced on success because
+  the client doesn't need it for happy paths today.
+- `ErrorMessage.vue` renders `<p class="error__request-id">` with the
+  id when present (kind-agnostic — applies to all four `ApiErrorKind`s).
+  When the id is absent, the block is omitted (network-only failures
+  before any HTTP response, for example).
+- New i18n string `errors.requestIdLabel = 'ID de referencia'`.
+- 3 new tests: 1 in `client.test.ts` (capture of header on a 5xx),
+  2 in `ErrorMessage.test.ts` (renders when present, omits when absent).
+**Impact:**
+- HTTP contract: unchanged (consumer-side change only).
+- Frontend tests: 102 → 105.
+- Operational: the id now flows backend log → HTTP header → UI → user
+  → support input → log grep. Closed loop.
+**Cost / risk:** None observed. The `requestId` field on `ApiError` is
+optional and additive — older code constructing `ApiError` without it
+keeps compiling. The component renders the block conditionally so
+errors without an id (the rejected-fetch network case before any HTTP
+exchange) degrade gracefully.
+**Author:** project owner.
+
+---
+
+### 35. `WizardResult.vue` `onMounted` switched to `async/await` for `void`-operator consistency <2026-05-16>
+**Trigger:** Final-pass audit caught a leftover `void submit(...)` inside
+`WizardResult.vue`'s `onMounted` callback. The same pattern was
+addressed in `WizardShell.vue` during the SonarCloud sweep
+(`typescript:S3735`, replanning entry around #25-30) but Sonar's rule
+didn't fire here this round — likely because the call sits inside
+`onMounted` rather than a top-level handler. Inconsistency surfaced
+on a manual re-read.
+**Change:**
+- `onMounted(() => { void submit({...}) })` becomes
+  `onMounted(async () => { await submit({...}) })`.
+- Vue 3's lifecycle hooks accept `Promise<void>` callbacks; no behaviour
+  change.
+**Impact:**
+- `void` operator now absent from the frontend codebase.
+- Frontend tests: 105/105 unchanged.
+- If `no-floating-promises` (typescript-eslint, type-checked rule) is
+  ever enabled, this site no longer trips it.
+**Cost / risk:** None. The change is byte-equivalent at runtime.
+**Author:** project owner.
+
+---
+
 ## 6. Out-of-Scope, Re-Opened If Asked
 
 These were ruled out by the constitution but may be re-opened on review feedback:
