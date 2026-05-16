@@ -34,6 +34,11 @@ const message = computed(() => {
         >: {{ v.message }}
       </li>
     </ul>
+    <p v-if="props.error.requestId" class="error__request-id">
+      <small
+        >{{ es.errors.requestIdLabel }}: <code>{{ props.error.requestId }}</code></small
+      >
+    </p>
     <button type="button" class="error__retry" @click="$emit('retry')">Reintentar</button>
   </div>
 </template>

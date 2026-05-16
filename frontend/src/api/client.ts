@@ -6,13 +6,21 @@ export class ApiError extends Error {
   readonly kind: ApiErrorKind;
   readonly status?: number;
   readonly violations?: Violation[];
+  readonly requestId?: string;
 
-  constructor(kind: ApiErrorKind, message: string, status?: number, violations?: Violation[]) {
+  constructor(
+    kind: ApiErrorKind,
+    message: string,
+    status?: number,
+    violations?: Violation[],
+    requestId?: string,
+  ) {
     super(message);
     this.name = 'ApiError';
     this.kind = kind;
     this.status = status;
     this.violations = violations;
+    this.requestId = requestId;
   }
 }
 
@@ -52,6 +60,12 @@ export class ApiClient {
       );
     }
 
+    // Backend correlates each /calculate call with a request id and surfaces
+    // it as X-Request-Id on the response (matching the value in the
+    // structured log line). Capturing it on errors lets the user share it
+    // when reporting a problem.
+    const requestId = response.headers.get('X-Request-Id') ?? undefined;
+
     if (response.ok) {
       return (await response.json()) as TResponse;
     }
@@ -63,10 +77,17 @@ export class ApiClient {
         envelope?.error ?? 'Validation failed',
         response.status,
         envelope?.violations,
+        requestId,
       );
     }
 
-    throw new ApiError('server', `Upstream returned HTTP ${response.status}`, response.status);
+    throw new ApiError(
+      'server',
+      `Upstream returned HTTP ${response.status}`,
+      response.status,
+      undefined,
+      requestId,
+    );
   }
 
   private async safeJson<T>(response: Response): Promise<T | undefined> {

@@ -37,4 +37,19 @@ describe('ErrorMessage', () => {
     await wrapper.get('button.error__retry').trigger('click');
     expect(wrapper.emitted('retry')).toBeTruthy();
   });
+
+  it('shows the request id when ApiError carries it', () => {
+    const wrapper = mount(ErrorMessage, {
+      props: { error: new ApiError('server', 'oops', 503, undefined, 'abc1234567890def') },
+    });
+    expect(wrapper.text()).toContain('abc1234567890def');
+    expect(wrapper.text()).toContain('ID de referencia');
+  });
+
+  it('omits the request id block when ApiError has none', () => {
+    const wrapper = mount(ErrorMessage, {
+      props: { error: new ApiError('network', 'fail') },
+    });
+    expect(wrapper.text()).not.toContain('ID de referencia');
+  });
 });

@@ -28,6 +28,7 @@ export const es = {
     server: 'El servidor tuvo un problema. Inténtalo de nuevo más tarde.',
     validation: 'Revisa los datos del formulario.',
     unknown: 'Ha ocurrido un error inesperado.',
+    requestIdLabel: 'ID de referencia',
   },
   wizard: {
     startLink: 'Probar el asistente paso a paso',

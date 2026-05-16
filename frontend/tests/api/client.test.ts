@@ -61,4 +61,16 @@ describe('ApiClient', () => {
 
     await expect(client.postJson('/x', {})).rejects.toMatchObject({ kind: 'server', status: 503 });
   });
+
+  it('captures X-Request-Id from the response and attaches it to the ApiError', async () => {
+    const response = new Response('{}', {
+      status: 503,
+      headers: { 'Content-Type': 'application/json', 'X-Request-Id': 'abc1234567890def' },
+    });
+    const fetchImpl = vi.fn().mockResolvedValue(response);
+    const client = new ApiClient({ baseUrl: '', fetchImpl });
+
+    const err = await client.postJson('/x', {}).catch((e) => e);
+    expect(err.requestId).toBe('abc1234567890def');
+  });
 });
