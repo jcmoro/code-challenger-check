@@ -56,126 +56,35 @@ Then open in a browser:
 | http://localhost:8080/api/doc        | Swagger UI                                            |
 | http://localhost:8080/api/doc.json   | Raw OpenAPI 3.0 spec                                  |
 
-A first-time bootstrap is not normally needed — the `backend/` and
-`frontend/` source trees are committed. If you ever need to recreate them
-from scratch (e.g. to upgrade Symfony or Vite versions), `make bootstrap`
-runs `composer create-project symfony/skeleton:^7.3 backend` and
-`npx create-vite frontend --template vue-ts` in throwaway containers.
-
 ---
 
-## Screenshots
-
-### Single-page form with results (`/`)
+## Screenshot
 
 Filled form, active campaign banner, hand-coded results table with the cheapest
-quote highlighted. Note that `provider-a` is missing from this run — it hit the
-simulated 10% random failure (the backend dropped it from the response with a
-JSON log line; the UI shows the surviving providers only).
+quote highlighted. `provider-a` is missing from this run — it hit the simulated
+10 % failure (the backend dropped it from the response and emitted a JSON log
+line; the UI shows the surviving providers only). Wizard and responsive
+viewports follow the same layout primitives.
 
 ![Single-page form and results](docs/_assets/screenshot-home.png)
-
-### Wizard result page (`/wizard/result`)
-
-After walking through the three wizard steps, the result page renders the same
-shared `QuoteResults` component with the campaign banner, ascending sort, and
-cheapest highlight. The two CTAs at the bottom let the user restart the wizard
-or fall back to the single-page form.
-
-![Wizard result page](docs/_assets/screenshot-wizard-result.png)
-
-### Responsive layout (narrow viewport)
-
-The `.page` container drops to `max-width: 480px` below tablet breakpoints; the
-results table reflows without horizontal scroll, and the form fields keep their
-labels stacked. All three providers responded for this run.
-
-![Responsive mobile view](docs/_assets/screenshot-mobile.png)
 
 ---
 
 ## Make targets
 
-`make help` prints the live, colour-coded menu. Targets are grouped by
-workflow — the seven groups below mirror what you'll see there.
+The seven workflows a reviewer needs:
 
-### Setup — first-time and one-off
+| Target          | Purpose                                                                |
+| --------------- | ---------------------------------------------------------------------- |
+| `make build`    | Build the three Docker images (backend, frontend, nginx)               |
+| `make install`  | `composer install` + `npm ci`                                          |
+| `make up-d`     | Start the full stack (detached)                                        |
+| `make test`     | Run all tests (113 PHPUnit + 102 Vitest)                               |
+| `make lint`     | PHPStan L10 + PHP-CS-Fixer + ESLint + Prettier + vue-tsc               |
+| `make coverage` | Generate Clover + LCOV reports for `make sonar` (needs `SONAR_TOKEN`)  |
+| `make help`     | Live, colour-coded menu of every target (auto-generated, source of truth) |
 
-| Target                  | Purpose                                                                  |
-| ----------------------- | ------------------------------------------------------------------------ |
-| `make bootstrap`        | One-time — create Symfony & Vue projects via throwaway containers (idempotent; skips if already present) |
-| `make bootstrap-backend`  | Just the Symfony skeleton (`composer create-project symfony/skeleton:^7.3 backend`) |
-| `make bootstrap-frontend` | Just the Vue skeleton (`npm create vite@latest frontend -- --template vue-ts`) |
-| `make build`            | Build the three Docker images (backend, frontend, nginx)                 |
-| `make install`          | `composer install` + `npm ci`                                            |
-| `make install-backend`  | Just `composer install` inside the backend image                         |
-| `make install-frontend` | Just `npm ci` inside the frontend image                                  |
-
-### Run — daily lifecycle
-
-| Target          | Purpose                              |
-| --------------- | ------------------------------------ |
-| `make up`       | Start the full stack (foreground)    |
-| `make up-d`     | Start the full stack (detached)      |
-| `make down`     | Stop the stack (keeps named volumes) |
-| `make logs`     | Tail logs from every service         |
-| `make ps`       | Show running services                |
-
-### Containers — drop into a shell
-
-| Target                | Purpose                                       |
-| --------------------- | --------------------------------------------- |
-| `make shell-backend`  | Bash shell inside the backend (PHP) container |
-| `make shell-frontend` | Sh shell inside the frontend (Node) container |
-
-### Test — PHPUnit + Vitest
-
-| Target               | Purpose                                |
-| -------------------- | -------------------------------------- |
-| `make test`          | Run all tests (backend + frontend)     |
-| `make test-backend`  | Just PHPUnit (113 cases)               |
-| `make test-frontend` | Just Vitest (102 cases)                |
-
-### Coverage & SonarCloud
-
-| Target                   | Purpose                                                                |
-| ------------------------ | ---------------------------------------------------------------------- |
-| `make coverage`          | Generate PHPUnit (Clover) + Vitest (LCOV) reports                      |
-| `make coverage-backend`  | Just PHPUnit with pcov → `backend/var/coverage/clover.xml`             |
-| `make coverage-frontend` | Just Vitest with v8 → `frontend/coverage/lcov.info`                    |
-| `make sonar`             | Upload analysis to SonarCloud (requires `SONAR_TOKEN` in env)          |
-
-`make sonar` runs `sonarsource/sonar-scanner-cli` against the host repo
-via Docker — no SonarScanner or Node install on the host needed. The
-SonarCloud project is `jcmoro_code-challenger-check`; config lives in
-[`sonar-project.properties`](./sonar-project.properties).
-
-### Quality — lint + static analysis (check mode)
-
-| Target           | Purpose                                                       |
-| ---------------- | ------------------------------------------------------------- |
-| `make lint`      | Run every check (stan + cs + eslint + prettier + typecheck)   |
-| `make stan`      | PHPStan analysis                                              |
-| `make cs`        | PHP-CS-Fixer (dry-run, fails on drift)                        |
-| `make eslint`    | ESLint (fails on any warning)                                 |
-| `make prettier`  | Prettier `--check`                                            |
-| `make typecheck` | `vue-tsc --noEmit` (strict TypeScript)                        |
-
-### Fix — auto-fixers in write mode
-
-| Target              | Purpose                                  |
-| ------------------- | ---------------------------------------- |
-| `make fix`          | Apply every auto-fixer                   |
-| `make fix-backend`  | PHP-CS-Fixer in write mode               |
-| `make fix-frontend` | ESLint `--fix` + Prettier `--write`      |
-
-### Reset — destructive, prompts first
-
-| Target       | Purpose                                                                |
-| ------------ | ---------------------------------------------------------------------- |
-| `make clean` | Remove containers, named volumes, and build artefacts (asks `[y/N]`)   |
-
-Plus `make help` (the default goal) to print the live menu.
+Run `make help` for the full list (bootstrap, shells, fix-mode, clean, etc.).
 
 ---
 
@@ -227,7 +136,7 @@ Six markdown documents in [`docs/plan/`](./docs/plan/) capture the
 3. [`specification.md`](docs/plan/specification.md) — detailed contracts: API request/response shapes, vocabulary mapping table (user-facing ↔ each provider), error semantics, frontend component structure.
 4. [`implementation.md`](docs/plan/implementation.md) — eight phased build plan with exit criteria, technology choices (locked), repo layout, Makefile sketch, and effort estimate.
 5. [`validation.md`](docs/plan/validation.md) — five-layer validation strategy (tooling → unit → integration → end-to-end → reviewer walk-through), exhaustive pricing test tables, binary acceptance criteria.
-6. [`replanning.md`](docs/plan/replanning.md) — the change log: 32 entries documenting every decision that drifted from the original plan, with trigger / change / impact / cost / risk for each.
+6. [`replanning.md`](docs/plan/replanning.md) — the change log: 35 entries documenting every decision that drifted from the original plan, with trigger / change / impact / cost / risk for each.
 
 ---
 
@@ -332,22 +241,9 @@ interfaces so tests run instantly and deterministically.
 
 ## Troubleshooting
 
-- **Port 8080 / 5173 already in use** — set `NGINX_HOST_PORT` and/or
-  `VITE_HOST_PORT` in `.env`, or export them inline:
-  `NGINX_HOST_PORT=8081 make up-d`. If you change the host port, also point
-  `VITE_API_BASE` at the new URL so the SPA can find the API.
-- **`/api/doc` returns 500 on first run** — the cache may have been built
-  before the bundle was added. Run `make shell-backend` then
-  `php bin/console cache:clear` (or simpler: `make down && make up-d`).
-- **WebTestCase fails with "Could not find service test.service_container"** —
-  the test cache wasn't rebuilt against a `test` environment. Clear it:
-  `make shell-backend` then `rm -rf var/cache && php bin/console cache:warmup --env=test`.
-- **Frontend can't reach the API in dev** — the dev container reads
-  `VITE_API_BASE` (default `http://localhost:8080`). If you changed
-  `NGINX_HOST_PORT`, override accordingly.
-- **`make clean` removes more than expected** — it prompts for confirmation
-  and deletes named volumes (composer cache, npm cache, node_modules). The
-  next `make install` rebuilds them.
+Resolved problems with root cause + prevention live in
+[`docs/operations/troubleshooting.md`](docs/operations/troubleshooting.md)
+as numbered `PROB-NNN` entries.
 
 ---
 
