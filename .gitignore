@@ -29,6 +29,10 @@
 .DS_Store
 Thumbs.db
 
+# Claude Code (local-only tooling config)
+CLAUDE.md
+.claude/
+
 # Docker
 docker-compose.local.yml
 
